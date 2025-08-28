@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse, sys, os, json, time, threading
+import logging
 from pathlib import Path
 from typing import Dict, Any, Tuple, Optional
 import requests, yaml
@@ -33,6 +34,7 @@ def load_cfg() -> Dict[str, Any]:
         try:
             data = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
         except Exception:
+            logging.exception(f"Failed to load config from {cfg_path}"
             data = {}
     cfg = deep_merge(DEFAULT_CFG, data)
     # env overrides
@@ -62,7 +64,7 @@ def ensure_parent(p: Path):
     try:
         p.parent.mkdir(parents=True, exist_ok=True)
     except Exception:
-        pass
+        logging.exception(f"Failed to create parent directory for {p}")
 
 def append_line(p: Path, line: str):
     try:
@@ -70,7 +72,7 @@ def append_line(p: Path, line: str):
         with p.open("a", encoding="utf-8") as f:
             f.write(line + "\n")
     except Exception:
-        pass
+        logging.exception(f"Failed to append line to {p}")
 
 def now_ts() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime())
