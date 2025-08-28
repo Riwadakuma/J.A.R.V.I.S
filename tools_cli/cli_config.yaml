@@ -1,0 +1,16 @@
+controller:
+  base_url: "http://127.0.0.1:8010"
+  timeout_sec: 30
+
+toolrunner:
+  base_url: "http://127.0.0.1:8011"
+  timeout_sec: 30
+  shared_token: ""   # если включишь в runner
+
+ui:
+  mode: "pretty"         # pretty | json | raw
+  history_file: "../data/cli_history.txt"
+  log_file: "../logs/cli.log"        # подробный лог в JSONL
+  spinner: true                       # псевдо-индикатор ожидания
+  confirm_on_low_conf: false          # если контроллер вернет мета с низкой уверенностью
+  auto_exec: true                     # выполнять команду автоматически (если controller.proxy_commands=false)

@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# Virtual envs
+.venv/
+venv/
+ENV/
+
+# OS/IDE
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs / temp / caches
+*.log
+*.pid
+.cache/
+.mypy_cache/
+.pytest_cache/
+coverage.xml
+htmlcov/
+
+# Local data
+workspace/
+logs/
+data/
+tmp/
+artifacts/
+runs/
+checkpoints/
+
+# Secrets/config
+.env
+.env.*.local
+*.session
+*.session-journal
+configs/*.local.yaml
+
+# Models & large binaries
+*.gguf
+*.safetensors
+*.pt
+*.bin
+*.ckpt
+
+# Backups
+*.bak
+*.orig

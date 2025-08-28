@@ -1,0 +1,24 @@
+config_version: 1
+
+server:
+  host: "127.0.0.1"
+  port: 8011
+
+security:
+  shared_token: ""         # задай позже и включи его проверку
+  allow_open: true         # разрешить files.open
+  allow_reveal: true       # разрешить files.reveal
+  allow_shortcut: true     # разрешить ярлык на рабочем столе (Windows)
+
+paths:
+  workspace: "../workspace"  # можно поставить "D:/jarvis/workspace"
+
+limits:
+  max_read_bytes: 5000000    # 5 MB для read
+  max_exec_ms: 10000         # запас на «медленные» инструменты (на будущее)
+
+logging:
+  level: "INFO"
+  file: "../logs/toolrunner.log"
+  rotate_mb: 10
+  backups: 5

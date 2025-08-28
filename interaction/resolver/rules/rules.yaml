@@ -1,0 +1,45 @@
+version: 1
+
+whitelist:
+  - files.list
+  - files.read
+  - files.create
+  - files.append
+  - files.open
+  - files.reveal
+  - files.shortcut_to_desktop
+  - system.help
+  - system.config_get
+  - system.config_set
+
+intents:
+  - command: files.list
+    keywords: ["файлы", "список", "найди", "перечисли", "покажи список"]
+    slots: ["mask?"]
+  - command: files.read
+    keywords: ["прочитай", "покажи содержимое", "выведи"]
+    slots: ["path"]
+  - command: files.create
+    keywords: ["создай", "создать файл", "new file"]
+    slots: ["path", "text?"]
+  - command: files.append
+    keywords: ["допиши", "append", "добавь в файл"]
+    slots: ["path", "text"]
+  - command: files.open
+    keywords: ["открой", "open", "запусти"]
+    slots: ["path"]
+  - command: files.reveal
+    keywords: ["покажи", "показать в проводнике", "show in explorer", "открой папку"]
+    slots: ["path?"]
+  - command: files.shortcut_to_desktop
+    keywords: ["ярлык", "shortcut"]
+    slots: ["path"]
+  - command: system.help
+    keywords: ["помощь", "help", "что умеешь"]
+    slots: []
+  - command: system.config_get
+    keywords: ["конфиг показать", "config show"]
+    slots: []
+  - command: system.config_set
+    keywords: ["конфиг установить", "config set"]
+    slots: ["key", "value"]

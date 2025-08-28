@@ -1,0 +1,63 @@
+config_version: 1
+
+server:
+  host: "127.0.0.1"   # не светимся наружу
+  port: 8010
+
+model:
+  name: "qwen2.5:1.5b"
+  host: "127.0.0.1"
+  port: 11434
+  timeout_sec: 60
+  profiles:            # необязательные пресеты (переключаемые командой в будущем)
+    tiny:
+      max_tokens: 128
+      temperature: 0.3
+      top_p: 0.9
+      ctx: 1024
+    balanced:
+      max_tokens: 256
+      temperature: 0.7
+      top_p: 0.9
+      ctx: 2048
+    smart:
+      max_tokens: 512
+      temperature: 0.7
+      top_p: 0.95
+      ctx: 4096
+
+sampling:
+  temperature: 0.7
+  top_p: 0.9
+  top_k: 60
+  repeat_penalty: 1.05
+  max_tokens: 256
+  ctx: 2048
+
+controller:
+  proxy_commands: false     # если true — сам ходит в toolrunner и возвращает result
+
+toolrunner:
+  base_url: "http://127.0.0.1:8011"
+  timeout_sec: 30
+  shared_token: ""          # задай позже; тогда контроллер будет слать X-Jarvis-Token
+
+history:
+  enabled: true
+  path: "../data/history.jsonl"
+  retention_days: 30
+  max_bytes: 5000000        # 5 MB
+
+logging:
+  level: "INFO"
+  file: "../logs/controller.log"
+  rotate_mb: 10
+  backups: 5
+  
+interaction:
+  enabled: true
+  resolver_url: "http://127.0.0.1:8020"
+  resolver_mode: "hybrid"
+  llm_threshold: 0.75
+  use_legacy_when_low_conf: true
+  low_conf_threshold: 0.50
