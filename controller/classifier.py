@@ -1,5 +1,5 @@
 import json
-from controller.ai.ollama_client import ollama_chat
+from .ollama_client import ollama_chat
 
 _PROMPT = """Ты распознаёшь намерение пользователя.
 Верни ТОЛЬКО JSON по схеме:

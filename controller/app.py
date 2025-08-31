@@ -5,9 +5,9 @@ import yaml
 import httpx
 
 from .contracts import ChatIn, ChatOut
-from .router import route                      # legacy-парсер на случай деградации
-from .ai.ollama_client import ollama_chat
-from .resolver_adapter import ResolverAdapter  # новый резолвер
+from .router import route                     
+from .ollama_client import ollama_chat
+from .resolver_adapter import ResolverAdapter  
 
 CFG_PATH = Path(__file__).parent / "config.yaml"
 _config = yaml.safe_load(CFG_PATH.read_text(encoding="utf-8")) if CFG_PATH.exists() else {}
