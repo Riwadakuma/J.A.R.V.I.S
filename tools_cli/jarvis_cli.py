@@ -27,6 +27,11 @@ ENV_OVERRIDES = {
 # ---------- config & io ----------
 
 def load_cfg() -> Dict[str, Any]:
+    """Load configuration, applying defaults and environment overrides.
+
+    Returns:
+        Combined configuration dictionary.
+    """
     here = Path(__file__).parent
     cfg_path = here / "cli_config.yaml"
     data: Dict[str, Any] = {}
@@ -34,7 +39,7 @@ def load_cfg() -> Dict[str, Any]:
         try:
             data = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
         except Exception:
-            logging.exception(f"Failed to load config from {cfg_path}"
+            logging.exception(f"Failed to load config from {cfg_path}")
             data = {}
     cfg = deep_merge(DEFAULT_CFG, data)
     # env overrides
@@ -44,7 +49,9 @@ def load_cfg() -> Dict[str, Any]:
             set_deep(cfg, key, val)
     return cfg
 
+
 def deep_merge(a: Dict[str, Any], b: Dict[str, Any]) -> Dict[str, Any]:
+    """Recursively merge mapping ``b`` into ``a`` and return the result."""
     out = dict(a)
     for k, v in (b or {}).items():
         if isinstance(v, dict) and isinstance(out.get(k), dict):
@@ -53,20 +60,26 @@ def deep_merge(a: Dict[str, Any], b: Dict[str, Any]) -> Dict[str, Any]:
             out[k] = v
     return out
 
+
 def set_deep(d: Dict[str, Any], dotted: str, value: Any):
+    """Set a nested ``value`` in ``d`` using dotted path notation."""
     node = d
     parts = dotted.split(".")
     for p in parts[:-1]:
         node = node.setdefault(p, {})
     node[parts[-1]] = value
 
+
 def ensure_parent(p: Path):
+    """Create parent directories for ``p`` if they do not exist."""
     try:
         p.parent.mkdir(parents=True, exist_ok=True)
     except Exception:
         logging.exception(f"Failed to create parent directory for {p}")
 
+
 def append_line(p: Path, line: str):
+    """Append a line to a file, creating parent directories if needed."""
     try:
         ensure_parent(p)
         with p.open("a", encoding="utf-8") as f:
@@ -74,17 +87,23 @@ def append_line(p: Path, line: str):
     except Exception:
         logging.exception(f"Failed to append line to {p}")
 
+
 def now_ts() -> str:
+    """Return current timestamp as a string."""
     return time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime())
 
+
 def log_event(cfg: Dict[str, Any], event: str, payload: Dict[str, Any]):
+    """Append an event record to the log file configured in ``cfg``."""
     lf = (cfg.get("ui") or {}).get("log_file")
     if not lf:
         return
     rec = {"ts": now_ts(), "event": event, **payload}
     append_line(Path(lf), json.dumps(rec, ensure_ascii=False))
 
+
 def append_history(cfg: Dict[str, Any], text: str):
+    """Save user input to the history file if configured."""
     hist = (cfg.get("ui") or {}).get("history_file")
     if not hist:
         return
@@ -92,7 +111,17 @@ def append_history(cfg: Dict[str, Any], text: str):
 
 # ---------- http helpers ----------
 
-def http_post_json(url: str, data: Dict[str, Any], timeout: int, headers: Optional[Dict[str, str]] = None) -> Tuple[int, Dict[str, Any], Dict[str, str], float]:
+
+def http_post_json(
+    url: str,
+    data: Dict[str, Any],
+    timeout: int,
+    headers: Optional[Dict[str, str]] = None,
+) -> Tuple[int, Dict[str, Any], Dict[str, str], float]:
+    """Send a POST request with JSON body and return response details.
+
+    Returns a tuple of status code, decoded body, headers and duration in ms.
+    """
     t0 = time.perf_counter()
     try:
         r = requests.post(url, json=data, timeout=timeout, headers=headers or {})
@@ -106,44 +135,61 @@ def http_post_json(url: str, data: Dict[str, Any], timeout: int, headers: Option
         dur = (time.perf_counter() - t0) * 1000.0
         return 599, {"detail": f"{type(e).__name__}: {e}"}, {}, dur
 
+
 def do_chat(cfg: Dict[str, Any], text: str):
+    """Call the controller's ``/chat`` endpoint with provided text."""
     base = cfg["controller"]["base_url"].rstrip("/")
     timeout = int(cfg["controller"]["timeout_sec"])
     return http_post_json(f"{base}/chat", {"text": text}, timeout)
 
+
 def do_execute(cfg: Dict[str, Any], command: str, args: Dict[str, Any]):
+    """Invoke the toolrunner to execute a command with arguments."""
     base = cfg["toolrunner"]["base_url"].rstrip("/")
     timeout = int(cfg["toolrunner"]["timeout_sec"])
     headers = {}
     token = (cfg["toolrunner"].get("shared_token") or "").strip()
     if token:
         headers["X-Jarvis-Token"] = token
-    return http_post_json(f"{base}/execute", {"command": command, "args": args or {}}, timeout, headers=headers)
+    return http_post_json(
+        f"{base}/execute", {"command": command, "args": args or {}}, timeout, headers=headers
+    )
 
 # ---------- spinner ----------
 
+
 class Spinner:
+    """Minimal console spinner used while waiting on network calls."""
+
     FRAMES = ["|", "/", "—", "\\"]
+
     def __init__(self, enabled: bool):
+        """Create spinner; ``enabled`` controls whether it draws frames."""
         self.enabled = enabled
         self._alive = False
         self._t = None
 
     def start(self, label=""):
+        """Start showing the spinner with an optional label."""
         if not self.enabled or self._alive:
             return
         self._alive = True
+
         def _run():
             i = 0
             while self._alive:
-                sys.stdout.write("\r" + (label + " " if label else "") + self.FRAMES[i % len(self.FRAMES)])
+                sys.stdout.write(
+                    "\r" + (label + " " if label else "") + self.FRAMES[i % len(self.FRAMES)]
+                )
                 sys.stdout.flush()
                 i += 1
                 time.sleep(0.08)
+
         self._t = threading.Thread(target=_run, daemon=True)
         self._t.start()
 
     def stop(self):
+        """Stop the spinner and clean up the line."""
         if not self.enabled:
             return
         self._alive = False
@@ -154,11 +200,15 @@ class Spinner:
 
 # ---------- printers ----------
 
+
 def print_json(resp: Dict[str, Any]) -> int:
+    """Print response dictionary as formatted JSON."""
     print(json.dumps(resp, ensure_ascii=False, indent=2))
     return 0
 
+
 def print_raw(resp: Dict[str, Any]) -> int:
+    """Print response without additional formatting."""
     t = resp.get("type")
     if t == "chat":
         print(resp.get("text", "").strip())
@@ -167,12 +217,16 @@ def print_raw(resp: Dict[str, Any]) -> int:
         if ok is None:
             print(f"{resp.get('command','')} {json.dumps(resp.get('args') or {}, ensure_ascii=False)}")
         else:
-            print(json.dumps({"ok": ok, "result": resp.get("result"), "error": resp.get("error")}, ensure_ascii=False))
+            print(
+                json.dumps({"ok": ok, "result": resp.get("result"), "error": resp.get("error")}, ensure_ascii=False)
+            )
     else:
         print(json.dumps(resp, ensure_ascii=False))
     return 0
 
+
 def print_pretty(resp: Dict[str, Any]) -> int:
+    """Human-friendly printer that highlights chat and command responses."""
     t = resp.get("type")
     if t == "chat":
         print(resp.get("text", "").strip())
@@ -189,7 +243,9 @@ def print_pretty(resp: Dict[str, Any]) -> int:
             if fb:
                 info.append("fallback")
             suffix = ("  [" + ", ".join(info) + "]") if info else ""
-            print(f"[command] {resp.get('command')} {json.dumps(resp.get('args') or {}, ensure_ascii=False)}{suffix}")
+            print(
+                f"[command] {resp.get('command')} {json.dumps(resp.get('args') or {}, ensure_ascii=False)}{suffix}"
+            )
             return 0
         if ok:
             res = resp.get("result")
@@ -207,7 +263,9 @@ def print_pretty(resp: Dict[str, Any]) -> int:
     print(json.dumps(resp, ensure_ascii=False))
     return 0
 
+
 def printer(mode: str, resp: Dict[str, Any]) -> int:
+    """Dispatch response printer based on output ``mode``."""
     if mode == "json":
         return print_json(resp)
     if mode == "raw":
@@ -216,7 +274,26 @@ def printer(mode: str, resp: Dict[str, Any]) -> int:
 
 # ---------- core flows ----------
 
-def run_once(cfg: Dict[str, Any], text: str, mode: str, no_exec: bool = False, verbose: int = 0) -> int:
+
+def run_once(
+    cfg: Dict[str, Any],
+    text: str,
+    mode: str,
+    no_exec: bool = False,
+    verbose: int = 0,
+) -> int:
+    """Handle a single user request and print the result.
+
+    Args:
+        cfg: Configuration dictionary.
+        text: User input text.
+        mode: Output mode (``pretty``, ``json`` or ``raw``).
+        no_exec: If ``True``, do not execute returned commands.
+        verbose: Verbosity level for debugging.
+
+    Returns:
+        Shell-style exit code.
+    """
     spinner = Spinner(bool((cfg.get("ui") or {}).get("spinner", True)))
     spinner.start("thinking")
     status, chat, headers, dur_ms = do_chat(cfg, text)
@@ -228,26 +305,52 @@ def run_once(cfg: Dict[str, Any], text: str, mode: str, no_exec: bool = False, v
         resp = {"type": "chat", "text": chat.get("detail", "E_CONTROLLER")}
         return printer(mode, resp)
 
-    # поддержка метаданных от контроллера (если ты включишь их)
+    # поддержка метаданных от контроллера (если они включены)
     meta = chat.get("meta") or {}
 
     if chat.get("type") == "command" and chat.get("command"):
         cmd, args = chat["command"], chat.get("args") or {}
         if no_exec:
-            out = {"type": "command", "command": cmd, "args": args, "ok": None, "result": None, "error": None, "meta": meta}
+            out = {
+                "type": "command",
+                "command": cmd,
+                "args": args,
+                "ok": None,
+                "result": None,
+                "error": None,
+                "meta": meta,
+            }
             return printer(mode, out)
 
         # опциональное подтверждение при низкой уверенности
         if (cfg.get("ui") or {}).get("confirm_on_low_conf"):
             conf = (meta.get("resolver") or {}).get("confidence")
             if isinstance(conf, (int, float)) and conf < 0.75:
-                yn = input(f"Уверенность {conf:.2f}. Выполнить команду {cmd}? [y/N] ").strip().lower()
+                yn = input(
+                    f"Уверенность {conf:.2f}. Выполнить команду {cmd}? [y/N] "
+                ).strip().lower()
                 if yn not in ("y", "yes", "д", "да"):
-                    out = {"type": "command", "command": cmd, "args": args, "ok": None, "result": None, "error": "CANCELLED", "meta": meta}
+                    out = {
+                        "type": "command",
+                        "command": cmd,
+                        "args": args,
+                        "ok": None,
+                        "result": None,
+                        "error": "CANCELLED",
+                        "meta": meta,
+                    }
                     return printer(mode, out)
 
         if not (cfg.get("ui") or {}).get("auto_exec", True):
-            out = {"type": "command", "command": cmd, "args": args, "ok": None, "result": None, "error": None, "meta": meta}
+            out = {
+                "type": "command",
+                "command": cmd,
+                "args": args,
+                "ok": None,
+                "result": None,
+                "error": None,
+                "meta": meta,
+            }
             return printer(mode, out)
 
         spinner.start("execute")
@@ -256,19 +359,33 @@ def run_once(cfg: Dict[str, Any], text: str, mode: str, no_exec: bool = False, v
         log_event(cfg, "execute_response", {"status": st2, "ms": round(dur2, 1), "body": out})
 
         if st2 >= 400:
-            resp = {"type": "command", "command": cmd, "args": args, "ok": False,
-                    "result": None, "error": (out.get("detail") or "E_COMMAND_FAILED")}
+            resp = {
+                "type": "command",
+                "command": cmd,
+                "args": args,
+                "ok": False,
+                "result": None,
+                "error": (out.get("detail") or "E_COMMAND_FAILED"),
+            }
             return printer(mode, resp)
 
-        resp = {"type": "command", "command": cmd, "args": args,
-                "ok": bool(out.get("ok")), "result": out.get("result"), "error": out.get("error")}
+        resp = {
+            "type": "command",
+            "command": cmd,
+            "args": args,
+            "ok": bool(out.get("ok")),
+            "result": out.get("result"),
+            "error": out.get("error"),
+        }
         return printer(mode, resp)
 
     # иначе это чат
     append_history(cfg, text)
     return printer(mode, chat)
 
+
 def repl(cfg: Dict[str, Any], mode: str, no_exec: bool, verbose: int):
+    """Interactive shell for communicating with JARVIS."""
     print("JARVIS CLI. Введите запрос. Ctrl+C — выход.")
     while True:
         try:
@@ -293,7 +410,9 @@ def repl(cfg: Dict[str, Any], mode: str, no_exec: bool, verbose: int):
 
 # ---------- main ----------
 
+
 def main():
+    """Parse CLI arguments and run the requested mode."""
     p = argparse.ArgumentParser(prog="jarvis", description="CLI клиент для локального JARVIS")
     g = p.add_mutually_exclusive_group()
     g.add_argument("-e", "--execute", dest="text", help="Одноразовый запуск: отправить строку в /chat (и /execute при команде)")
@@ -306,14 +425,17 @@ def main():
 
     cfg = load_cfg()
     mode = (cfg.get("ui") or {}).get("mode", "pretty")
-    if args.json: mode = "json"
-    if args.raw: mode = "raw"
+    if args.json:
+        mode = "json"
+    if args.raw:
+        mode = "raw"
 
     # чтение из файла
     if args.file:
         pth = Path(args.file)
         if not pth.exists():
-            print("E_FILE_NOT_FOUND", file=sys.stderr); sys.exit(1)
+            print("E_FILE_NOT_FOUND", file=sys.stderr)
+            sys.exit(1)
         text = pth.read_text(encoding="utf-8", errors="ignore")
         sys.exit(run_once(cfg, text, mode, no_exec=args.no_exec, verbose=args.verbose))
 
