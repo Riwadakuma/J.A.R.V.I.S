@@ -10,3 +10,11 @@
 ```bash
 pip install -r controller/requirements.txt
 uvicorn controller.app:app --host 127.0.0.1 --port 8010 --reload
+```
+
+### CLI
+
+```bash
+python tools_cli/jarvis_cli.py            # интерактивный режим
+python tools_cli/jarvis_cli.py -e "привет"  # одноразовый запрос
+```
