@@ -65,66 +65,104 @@ class Resolver:
         req = self._required_slots_for(command)
         return any(r not in slots or slots.get(r) in ("", None) for r in req)
 
+    def _pack(
+        self,
+        trace_id: str,
+        command: str,
+        slots: Dict[str, Any],
+        confidence: float,
+        why: List[str],
+        workspace: Path,
+    ) -> Dict[str, Any]:
+        args = dict(slots or {})
+        explain = list(why or [])
+
+        if "path" in args and not sandbox_ok(workspace, args["path"]):
+            command = "files.list"
+            args = {"mask": args.get("mask", "*")}
+            confidence = 0.49
+            explain.append("sandbox:violation")
+
+        out = {
+            "trace_id": trace_id,
+            "command": command,
+            "args": args,
+            "confidence": confidence,
+            "fallback_used": command == "files.list",
+            "explain": explain,
+            "write": classify_write(command),
+        }
+        return out
+
     def resolve(self, trace_id: str, text: str, context: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
-    cfg = Cfg(
-        mode=config.get("mode", "hybrid"),
-        llm_threshold=float(config.get("llm_threshold", 0.75)),
-        workspace_root=context.get("cwd") or "workspace",
-        llm_enable=bool(config.get("llm", {}).get("enable", True)),
-        llm_base_url=config.get("llm", {}).get("base_url", "http://127.0.0.1:11434"),
-        llm_model=config.get("llm", {}).get("model", "tinyllama"),
-    )
+        cfg = Cfg(
+            mode=config.get("mode", "hybrid"),
+            llm_threshold=float(config.get("llm_threshold", 0.75)),
+            workspace_root=context.get("cwd") or "workspace",
+            llm_enable=bool(config.get("llm", {}).get("enable", True)),
+            llm_base_url=config.get("llm", {}).get("base_url", "http://127.0.0.1:11434"),
+            llm_model=config.get("llm", {}).get("model", "tinyllama"),
+        )
 
-    workspace = Path(cfg.workspace_root)
+        workspace = Path(cfg.workspace_root)
 
-    # 1) нормализация и лексикон
-    t = normalize(text)
-    t = self._apply_lexicon(t)
+        # 1) нормализация и лексикон
+        t = normalize(text)
+        t = self._apply_lexicon(t)
 
-    # 2) извлекаем слоты
-    slots = extract_slots(t)
+        # 2) извлекаем слоты
+        slots = extract_slots(t)
 
-    # 3) правило-интент
-    intent = self._match_intent(t)
+        # 3) правило-интент
+        intent = self._match_intent(t)
 
-    # 4) бонус за наличие ключевого слота path у команд, где он обязателен
-    if intent.get("command") in ("files.create", "files.open", "files.read") and "path" in slots:
-        intent["score"] += 0.15
-        intent["why"].append("slot:path")
+        # 4) бонус за наличие ключевого слота path у команд, где он обязателен
+        if intent.get("command") in ("files.create", "files.open", "files.read") and "path" in slots:
+            intent["score"] += 0.15
+            intent["why"].append("slot:path")
 
-    # 5) общий бонус за любые найденные слоты
-    if slots:
-        intent["score"] += 0.2
-        intent["why"].append("slots:yes")
+        # 5) общий бонус за любые найденные слоты
+        if slots:
+            intent["score"] += 0.2
+            intent["why"].append("slots:yes")
 
-    # 6) fuzzy: для create/append разрешаем новый путь (файл может не существовать)
-    allow_new = intent.get("command") in ("files.create", "files.append")
-    if "path" in slots:
-        slots = try_fuzzy_path(workspace, slots, allow_new=allow_new)
-        intent["score"] += 0.15
-        intent["why"].append("fuzzy:path")
+        # 6) fuzzy: для create/append разрешаем новый путь (файл может не существовать)
+        allow_new = intent.get("command") in ("files.create", "files.append")
+        if "path" in slots:
+            slots = try_fuzzy_path(workspace, slots, allow_new=allow_new)
+            intent["score"] += 0.15
+            intent["why"].append("fuzzy:path")
 
-    # 7) LLM при неоднозначности или если не хватает обязательных слотов
-    ambiguous = (0.50 <= intent["score"] < cfg.llm_threshold) or self._missing_required_slot(intent.get("command"), slots)
-    if cfg.mode == "hybrid" and cfg.llm_enable and ambiguous:
-        try:
-            llm_ans = ask_ollama(t, model=cfg.llm_model, base_url=cfg.llm_base_url)
-            if isinstance(llm_ans, dict):
-                cmd = llm_ans.get("command")
-                args = llm_ans.get("args") or {}
-                if cmd in self.whitelist:
-                    intent["command"] = cmd or intent["command"]
-                    for k, v in args.items():
-                        slots.setdefault(k, v)
-                    intent["score"] = max(intent["score"], cfg.llm_threshold)
-                    intent["why"].append("llm:disambiguation")
-        except Exception:
-            intent["why"].append("llm:fail")
+        # 7) LLM при неоднозначности или если не хватает обязательных слотов
+        ambiguous = (
+            0.50 <= intent["score"] < cfg.llm_threshold
+        ) or self._missing_required_slot(intent.get("command"), slots)
+        if cfg.mode == "hybrid" and cfg.llm_enable and ambiguous:
+            try:
+                llm_ans = ask_ollama(t, model=cfg.llm_model, base_url=cfg.llm_base_url)
+                if isinstance(llm_ans, dict):
+                    cmd = llm_ans.get("command")
+                    args = llm_ans.get("args") or {}
+                    if cmd in self.whitelist:
+                        intent["command"] = cmd or intent["command"]
+                        for k, v in args.items():
+                            slots.setdefault(k, v)
+                        intent["score"] = max(intent["score"], cfg.llm_threshold)
+                        intent["why"].append("llm:disambiguation")
+            except Exception:
+                intent["why"].append("llm:fail")
 
-    # 8) fallback, если так и не распознали
-    if not intent.get("command"):
-        return self._pack(trace_id, cfg.fallback_command, {"mask": slots.get("mask", "*")}, 0.49, intent["why"], workspace)
+        # 8) fallback, если так и не распознали
+        if not intent.get("command"):
+            return self._pack(
+                trace_id,
+                cfg.fallback_command,
+                {"mask": slots.get("mask", "*")},
+                0.49,
+                intent["why"],
+                workspace,
+            )
 
-    conf = min(0.99, intent["score"])
-    return self._pack(trace_id, intent["command"], slots, conf, intent["why"], workspace)
+        conf = min(0.99, intent["score"])
+        return self._pack(trace_id, intent["command"], slots, conf, intent["why"], workspace)
 
