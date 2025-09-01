@@ -26,14 +26,18 @@ ENV_OVERRIDES = {
 
 # ---------- config & io ----------
 
-def load_cfg() -> Dict[str, Any]:
+def load_cfg(custom_cfg_path: Optional[str] = None) -> Dict[str, Any]:
     """Load configuration, applying defaults and environment overrides.
+
+    Args:
+        custom_cfg_path: optional path to YAML config file. If not provided,
+            defaults to tools_cli/cli_config.yaml near this script.
 
     Returns:
         Combined configuration dictionary.
     """
     here = Path(__file__).parent
-    cfg_path = here / "cli_config.yaml"
+    cfg_path = Path(custom_cfg_path) if custom_cfg_path else (here / "cli_config.yaml")
     data: Dict[str, Any] = {}
     if cfg_path.exists():
         try:
@@ -111,7 +115,6 @@ def append_history(cfg: Dict[str, Any], text: str):
 
 # ---------- http helpers ----------
 
-
 def http_post_json(
     url: str,
     data: Dict[str, Any],
@@ -135,13 +138,11 @@ def http_post_json(
         dur = (time.perf_counter() - t0) * 1000.0
         return 599, {"detail": f"{type(e).__name__}: {e}"}, {}, dur
 
-
 def do_chat(cfg: Dict[str, Any], text: str):
     """Call the controller's ``/chat`` endpoint with provided text."""
     base = cfg["controller"]["base_url"].rstrip("/")
     timeout = int(cfg["controller"]["timeout_sec"])
     return http_post_json(f"{base}/chat", {"text": text}, timeout)
-
 
 def do_execute(cfg: Dict[str, Any], command: str, args: Dict[str, Any]):
     """Invoke the toolrunner to execute a command with arguments."""
@@ -156,7 +157,6 @@ def do_execute(cfg: Dict[str, Any], command: str, args: Dict[str, Any]):
     )
 
 # ---------- spinner ----------
-
 
 class Spinner:
     """Minimal console spinner used while waiting on network calls."""
@@ -200,12 +200,10 @@ class Spinner:
 
 # ---------- printers ----------
 
-
 def print_json(resp: Dict[str, Any]) -> int:
     """Print response dictionary as formatted JSON."""
     print(json.dumps(resp, ensure_ascii=False, indent=2))
     return 0
-
 
 def print_raw(resp: Dict[str, Any]) -> int:
     """Print response without additional formatting."""
@@ -223,7 +221,6 @@ def print_raw(resp: Dict[str, Any]) -> int:
     else:
         print(json.dumps(resp, ensure_ascii=False))
     return 0
-
 
 def print_pretty(resp: Dict[str, Any]) -> int:
     """Human-friendly printer that highlights chat and command responses."""
@@ -263,7 +260,6 @@ def print_pretty(resp: Dict[str, Any]) -> int:
     print(json.dumps(resp, ensure_ascii=False))
     return 0
 
-
 def printer(mode: str, resp: Dict[str, Any]) -> int:
     """Dispatch response printer based on output ``mode``."""
     if mode == "json":
@@ -273,7 +269,6 @@ def printer(mode: str, resp: Dict[str, Any]) -> int:
     return print_pretty(resp)
 
 # ---------- core flows ----------
-
 
 def run_once(
     cfg: Dict[str, Any],
@@ -383,7 +378,6 @@ def run_once(
     append_history(cfg, text)
     return printer(mode, chat)
 
-
 def repl(cfg: Dict[str, Any], mode: str, no_exec: bool, verbose: int):
     """Interactive shell for communicating with JARVIS."""
     print("JARVIS CLI. Введите запрос. Ctrl+C — выход.")
@@ -410,20 +404,20 @@ def repl(cfg: Dict[str, Any], mode: str, no_exec: bool, verbose: int):
 
 # ---------- main ----------
 
-
 def main():
     """Parse CLI arguments and run the requested mode."""
     p = argparse.ArgumentParser(prog="jarvis", description="CLI клиент для локального JARVIS")
     g = p.add_mutually_exclusive_group()
     g.add_argument("-e", "--execute", dest="text", help="Одноразовый запуск: отправить строку в /chat (и /execute при команде)")
     g.add_argument("-f", "--file", dest="file", help="Прочитать файл и отправить содержимое")
+    p.add_argument("--config", dest="config", help="Путь к YAML-конфигу (по умолчанию tools_cli/cli_config.yaml)")
     p.add_argument("--json", action="store_true", help="Вывод JSON")
     p.add_argument("--raw", action="store_true", help="Сырой вывод без форматирования")
     p.add_argument("--no-exec", action="store_true", help="Не выполнять команды (dry-run, только показать)")
     p.add_argument("-v", "--verbose", action="count", default=0, help="Подробности (повтор для ещё больше)")
     args = p.parse_args()
 
-    cfg = load_cfg()
+    cfg = load_cfg(args.config)
     mode = (cfg.get("ui") or {}).get("mode", "pretty")
     if args.json:
         mode = "json"
