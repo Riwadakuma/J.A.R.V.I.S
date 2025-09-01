@@ -40,5 +40,8 @@ uvicorn interaction.resolver.main:app --host 127.0.0.1 --port 8020 --reload
 `controller/config.yaml` и `toolrunner/config.yaml` используют относительные пути и localhost.
 Если нужны абсолютные пути, правь секцию `paths.workspace` или добавь `*.local.yaml` и читай при старте.
 
+CLI (`tools_cli/jarvis_cli.py`) по умолчанию использует `tools_cli/cli_config.yaml`.
+Можно указать другой конфиг с помощью опции `--config <file>`.
+
 ### Лицензия
 MIT
