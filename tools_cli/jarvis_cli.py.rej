@@ -1,0 +1,69 @@
+diff a/tools_cli/jarvis_cli.py b/tools_cli/jarvis_cli.py	(rejected hunks)
+@@ -388,63 +424,67 @@ def repl(cfg: Dict[str, Any], mode: str, no_exec: bool, verbose: int):
+                 continue
+             if line in ("/q", "/quit", "/exit"):
+                 break
+             if line == "/json":
+                 mode = "json"; print("mode=json"); continue
+             if line == "/pretty":
+                 mode = "pretty"; print("mode=pretty"); continue
+             if line == "/raw":
+                 mode = "raw"; print("mode=raw"); continue
+             code = run_once(cfg, line, mode, no_exec=no_exec, verbose=verbose)
+             if code != 0:
+                 # не валим REPL из-за ошибки команды
+                 pass
+         except KeyboardInterrupt:
+             print()
+             break
+ 
+ # ---------- main ----------
+ 
+ def main():
+     """Parse CLI arguments and run the requested mode."""
+     p = argparse.ArgumentParser(prog="jarvis", description="CLI клиент для локального JARVIS")
+     g = p.add_mutually_exclusive_group()
+     g.add_argument("-e", "--execute", dest="text", help="Одноразовый запуск: отправить строку в /chat (и /execute при команде)")
+     g.add_argument("-f", "--file", dest="file", help="Прочитать файл и отправить содержимое")
++    g.add_argument("--diagnostics", action="store_true", help="Запросить диагностику контроллера и выйти")
+     p.add_argument("--config", dest="config", help="Путь к YAML-конфигу (по умолчанию tools_cli/cli_config.yaml)")
+     p.add_argument("--json", action="store_true", help="Вывод JSON")
+     p.add_argument("--raw", action="store_true", help="Сырой вывод без форматирования")
+     p.add_argument("--no-exec", action="store_true", help="Не выполнять команды (dry-run, только показать)")
+     p.add_argument("-v", "--verbose", action="count", default=0, help="Подробности (повтор для ещё больше)")
+     args = p.parse_args()
+ 
+     cfg = load_cfg(args.config)
+     mode = (cfg.get("ui") or {}).get("mode", "pretty")
+     if args.json:
+         mode = "json"
+     if args.raw:
+         mode = "raw"
+ 
++    if args.diagnostics:
++        sys.exit(do_diagnostics(cfg, mode))
++
+     # чтение из файла
+     if args.file:
+         pth = Path(args.file)
+         if not pth.exists():
+             print("E_FILE_NOT_FOUND", file=sys.stderr)
+             sys.exit(1)
+         text = pth.read_text(encoding="utf-8", errors="ignore")
+         sys.exit(run_once(cfg, text, mode, no_exec=args.no_exec, verbose=args.verbose))
+ 
+     # одноразовый запуск
+     if args.text is not None:
+         sys.exit(run_once(cfg, args.text, mode, no_exec=args.no_exec, verbose=args.verbose))
+ 
+     # если на вход подали stdin (pipeline)
+     if not sys.stdin.isatty():
+         text = sys.stdin.read()
+         sys.exit(run_once(cfg, text, mode, no_exec=args.no_exec, verbose=args.verbose))
+ 
+     # REPL
+     repl(cfg, mode, no_exec=args.no_exec, verbose=args.verbose)
+     sys.exit(0)
+ 
+ if __name__ == "__main__":
+     main()

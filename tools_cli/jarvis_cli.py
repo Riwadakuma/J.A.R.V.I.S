@@ -138,6 +138,26 @@ def http_post_json(
         dur = (time.perf_counter() - t0) * 1000.0
         return 599, {"detail": f"{type(e).__name__}: {e}"}, {}, dur
 
+
+def http_get_json(
+    url: str,
+    timeout: int,
+    headers: Optional[Dict[str, str]] = None,
+) -> Tuple[int, Dict[str, Any], Dict[str, str], float]:
+    """Send a GET request and return response details."""
+    t0 = time.perf_counter()
+    try:
+        r = requests.get(url, timeout=timeout, headers=headers or {})
+        dur = (time.perf_counter() - t0) * 1000.0
+        try:
+            body = r.json()
+        except Exception:
+            body = {"detail": r.text}
+        return r.status_code, body, dict(r.headers or {}), dur
+    except Exception as e:
+        dur = (time.perf_counter() - t0) * 1000.0
+        return 599, {"detail": f"{type(e).__name__}: {e}"}, {}, dur
+
 def do_chat(cfg: Dict[str, Any], text: str):
     """Call the controller's ``/chat`` endpoint with provided text."""
     base = cfg["controller"]["base_url"].rstrip("/")
@@ -155,6 +175,22 @@ def do_execute(cfg: Dict[str, Any], command: str, args: Dict[str, Any]):
     return http_post_json(
         f"{base}/execute", {"command": command, "args": args or {}}, timeout, headers=headers
     )
+
+
+def do_diagnostics(cfg: Dict[str, Any], mode: str) -> int:
+    """Call controller's ``/diagnostics`` endpoint and print the result."""
+    base = cfg["controller"]["base_url"].rstrip("/")
+    timeout = int(cfg["controller"]["timeout_sec"])
+    spinner = Spinner(bool((cfg.get("ui") or {}).get("spinner", True)))
+    spinner.start("diagnostics")
+    status, body, _hdr, dur = http_get_json(f"{base}/diagnostics", timeout)
+    spinner.stop()
+    log_event(cfg, "diagnostics_response", {"status": status, "ms": round(dur, 1), "body": body})
+    if status >= 400:
+        resp = {"type": "chat", "text": body.get("detail", "E_CONTROLLER")}
+        printer(mode, resp)
+        return 1
+    return printer(mode, body)
 
 # ---------- spinner ----------
 
@@ -410,6 +446,7 @@ def main():
     g = p.add_mutually_exclusive_group()
     g.add_argument("-e", "--execute", dest="text", help="Одноразовый запуск: отправить строку в /chat (и /execute при команде)")
     g.add_argument("-f", "--file", dest="file", help="Прочитать файл и отправить содержимое")
+    g.add_argument("--diagnostics", action="store_true", help="Запросить диагностику контроллера и выйти")
     p.add_argument("--config", dest="config", help="Путь к YAML-конфигу (по умолчанию tools_cli/cli_config.yaml)")
     p.add_argument("--json", action="store_true", help="Вывод JSON")
     p.add_argument("--raw", action="store_true", help="Сырой вывод без форматирования")
@@ -423,6 +460,9 @@ def main():
         mode = "json"
     if args.raw:
         mode = "raw"
+
+    if args.diagnostics:
+        sys.exit(do_diagnostics(cfg, mode))
 
     # чтение из файла
     if args.file:
