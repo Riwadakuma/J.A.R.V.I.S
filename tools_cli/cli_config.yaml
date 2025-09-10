@@ -1,6 +1,8 @@
 controller:
   base_url: "http://127.0.0.1:8010"
   timeout_sec: 30
+  # пример проверки состояния:
+  # python tools_cli/jarvis_cli.py --diagnostics
 
 toolrunner:
   base_url: "http://127.0.0.1:8011"

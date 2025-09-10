@@ -1,0 +1,56 @@
+diff a/README.md b/README.md	(rejected hunks)
+@@ -21,27 +21,54 @@ Copy-Item .\toolrunner\config.yaml .\toolrunner\config.local.yaml -ErrorAction S
+ ```powershell
+ # Controller (8010)
+ uvicorn controller.app:app --host 127.0.0.1 --port 8010 --reload
+ 
+ # ToolRunner (8011)
+ uvicorn toolrunner.app:app --host 127.0.0.1 --port 8011 --reload
+ 
+ # Resolver (8020)
+ uvicorn interaction.resolver.main:app --host 127.0.0.1 --port 8020 --reload
+ ```
+ 
+ ### Структура
+ - `controller/` — REST API, интеграция с резолвером и LLM
+ - `toolrunner/` — файловые/системные инструменты
+ - `interaction/resolver/` — правила, нормализация, слоты, LLM-поддержка
+ - `tools_cli/` — PowerShell CLI (`tools_cli/jarvis.ps1`), HTTP-клиент
+ - `workspace/`, `logs/` — локальные артефакты (пустые)
+ 
+ ### Конфигурация
+ `controller/config.yaml` и `toolrunner/config.yaml` используют относительные пути и localhost.
+ Если нужны абсолютные пути, правь секцию `paths.workspace` или добавь `*.local.yaml` и читай при старте.
+ 
+ CLI (`tools_cli/jarvis_cli.py`) по умолчанию использует `tools_cli/cli_config.yaml`.
+ Можно указать другой конфиг с помощью опции `--config <file>`.
+ 
++### Диагностика
++Флаг `diagnostic_mode` включает эндпоинт `/diagnostics`, который возвращает текущие
++параметры и состояние сервисов. Пример ответа:
++
++```json
++GET /diagnostics
++{
++  "ok": true,
++  "model": "qwen2.5:1.5b",
++  "proxy_commands": false,
++  "resolver_enabled": true
++}
++```
++
++#### Включение
++- В `controller/config.yaml` добавьте:
++
++  ```yaml
++  controller:
++    diagnostic_mode: true
++  ```
++- Или запросите состояние напрямую через CLI:
++
++  ```bash
++  python tools_cli/jarvis_cli.py --diagnostics
++  ```
++
+ ### Лицензия
+ MIT
