@@ -9,8 +9,8 @@
 python -m venv .venv
 . .\.venv\Scripts\Activate.ps1
 
-# 2) установить зависимости (репозиторные)
-pip install -r requirements.txt
+# 2) установить зависимости
+pip install -r requirements.txt -r requirements-dev.txt
 
 # 3) скопировать конфиги
 Copy-Item .\controller\config.yaml .\controller\config.local.yaml -ErrorAction SilentlyContinue
