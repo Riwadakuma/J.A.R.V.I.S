@@ -43,5 +43,21 @@ uvicorn interaction.resolver.main:app --host 127.0.0.1 --port 8020 --reload
 CLI (`tools_cli/jarvis_cli.py`) по умолчанию использует `tools_cli/cli_config.yaml`.
 Можно указать другой конфиг с помощью опции `--config <file>`.
 
+### Tests
+Тесты лежат в каталоге `tests/` и покрывают сервисы `controller`, `toolrunner`, `interaction/resolver` и `tools_cli`.
+
+Требования: Python 3.10+ и dev-зависимости (`pytest`).
+
+```bash
+pip install -r requirements.txt  # базовые зависимости
+pip install pytest               # dev-зависимости
+pytest
+```
+
+Пример вывода:
+```
+8 passed in 1.14s
+```
+
 ### Лицензия
 MIT
