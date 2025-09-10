@@ -1,5 +1,8 @@
 config_version: 1
 
+# Включает режим диагностики и эндпоинт /diagnostics
+diagnostic_mode: false
+
 server:
   host: "127.0.0.1"   # не светимся наружу
   port: 8010
