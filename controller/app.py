@@ -1,16 +1,17 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pathlib import Path
 from typing import Dict, Tuple
 import yaml
 import httpx
 
 from .contracts import ChatIn, ChatOut
-from .router import route                     
+from .router import route, ALLOWED
 from .ollama_client import ollama_chat
 from .resolver_adapter import ResolverAdapter  
 
 CFG_PATH = Path(__file__).parent / "config.yaml"
 _config = yaml.safe_load(CFG_PATH.read_text(encoding="utf-8")) if CFG_PATH.exists() else {}
+_diagnostic_mode = bool(_config.get("diagnostic_mode", False))
 
 app = FastAPI(title="JARVIS Controller")
 
@@ -86,6 +87,29 @@ def healthz():
         "model": (_config.get("model") or {}).get("name", ""),
         "proxy_commands": _proxy_commands,
         "resolver_enabled": _resolver_enabled,
+    }
+
+# ---- Diagnostics -------------------------------------------------------------------
+
+@app.get("/diagnostics")
+def diagnostics():
+    if not _diagnostic_mode:
+        raise HTTPException(status_code=404, detail="Diagnostics disabled")
+
+    return {
+        "diagnostic_mode": True,
+        "config": _config,
+        "commands": {
+            "legacy": sorted(ALLOWED),
+            "resolver_whitelist": _WHITELIST_RESOLVER,
+        },
+        "resolver": {
+            "enabled": _resolver_enabled,
+            "active": _resolver is not None,
+            "use_legacy_when_low_conf": _use_legacy_when_low_conf,
+            "low_conf_threshold": _low_conf_threshold,
+        },
+        "model": _config.get("model") or {},
     }
 
 # ---- Chat -------------------------------------------------------------------------
