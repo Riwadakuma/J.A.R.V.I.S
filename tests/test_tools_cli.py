@@ -42,3 +42,35 @@ def test_run_once_no_exec(monkeypatch, tmp_path):
     assert captured["resp"]["type"] == "command"
     assert captured["resp"]["command"] == "files.read"
     assert captured["resp"]["ok"] is None
+
+
+def test_do_diagnostics(monkeypatch):
+    cfg = {"controller": {"base_url": "http://dummy", "timeout_sec": 1}, "ui": {}}
+
+    class DummySpinner:
+        def __init__(self, enabled):
+            pass
+        def start(self, label=""):
+            pass
+        def stop(self):
+            pass
+
+    monkeypatch.setattr(jarvis_cli, "Spinner", DummySpinner)
+
+    def fake_get(url, timeout, headers=None):
+        assert url == "http://dummy/diagnostics"
+        return 200, {"ok": True}, {}, 0.0
+
+    monkeypatch.setattr(jarvis_cli, "http_get_json", fake_get)
+
+    captured = {}
+
+    def fake_printer(mode, resp):
+        captured["resp"] = resp
+        return 0
+
+    monkeypatch.setattr(jarvis_cli, "printer", fake_printer)
+
+    code = jarvis_cli.do_diagnostics(cfg, "json")
+    assert code == 0
+    assert captured["resp"] == {"ok": True}
