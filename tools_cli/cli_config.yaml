@@ -1,18 +1,16 @@
 controller:
   base_url: "http://127.0.0.1:8010"
-  timeout_sec: 30
-  # пример проверки состояния:
-  # python tools_cli/jarvis_cli.py --diagnostics
+  timeout_sec: 60
 
 toolrunner:
   base_url: "http://127.0.0.1:8011"
   timeout_sec: 30
-  shared_token: ""   # если включишь в runner
+  shared_token: ""
 
 ui:
-  mode: "pretty"         # pretty | json | raw
+  mode: "pretty"
   history_file: "../data/cli_history.txt"
-  log_file: "../logs/cli.log"        # подробный лог в JSONL
-  spinner: true                       # псевдо-индикатор ожидания
-  confirm_on_low_conf: false          # если контроллер вернет мета с низкой уверенностью
-  auto_exec: true                     # выполнять команду автоматически (если controller.proxy_commands=false)
+  log_file: "../logs/cli.log"
+  spinner: true            # false — если не применял мой фикс спиннера
+  confirm_on_low_conf: false
+  auto_exec: false

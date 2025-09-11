@@ -200,23 +200,25 @@ class Spinner:
     FRAMES = ["|", "/", "—", "\\"]
 
     def __init__(self, enabled: bool):
-        """Create spinner; ``enabled`` controls whether it draws frames."""
         self.enabled = enabled
         self._alive = False
         self._t = None
+        self._last_len = 0
+        self._label = ""
 
-    def start(self, label=""):
+    def start(self, label: str = ""):
         """Start showing the spinner with an optional label."""
         if not self.enabled or self._alive:
             return
         self._alive = True
+        self._label = (label + " ") if label else ""
 
         def _run():
             i = 0
             while self._alive:
-                sys.stdout.write(
-                    "\r" + (label + " " if label else "") + self.FRAMES[i % len(self.FRAMES)]
-                )
+                line = self._label + self.FRAMES[i % len(self.FRAMES)]
+                self._last_len = len(line)
+                sys.stdout.write("\r" + line)
                 sys.stdout.flush()
                 i += 1
                 time.sleep(0.08)
@@ -231,8 +233,10 @@ class Spinner:
         self._alive = False
         if self._t:
             self._t.join(timeout=0.2)
-        sys.stdout.write("\r")
+        # Полностью затереть хвост «execute |/» и вернуть курсор в начало строки
+        sys.stdout.write("\r" + (" " * max(self._last_len, len(self._label) + 2)) + "\r")
         sys.stdout.flush()
+
 
 # ---------- printers ----------
 

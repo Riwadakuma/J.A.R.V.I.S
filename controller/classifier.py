@@ -20,7 +20,7 @@ def classify_to_command(user_text: str) -> dict | None:
             {"role": "system", "content": "Возвращай только валидный JSON без пояснений."},
             {"role": "user", "content": _PROMPT.format(text=user_text)},
         ]
-        raw = ollama_chat(model="qwen2.5:1.5b", messages=msg, sampling={"temperature": 0.0, "max_tokens": 200})
+        raw = ollama_chat(model="qwen2.5:1.5b", messages=msg, sampling={"temperature": 0.0, "num_predict": 200})
         return json.loads(raw)
     except Exception:
         return None
