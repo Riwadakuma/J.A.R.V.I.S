@@ -22,12 +22,9 @@ SYSTEM_PROMPT = (
     "Не придумывай факты. Если не уверен — 'Не знаю'."
 )
 
-# ---- Interaction / Resolver wiring -------------------------------------------------
-
 _interaction = _config.get("interaction") or {}
 _resolver_enabled = bool(_interaction.get("enabled", True))
 
-# ВАЖНО: маппинг резолвера — КАНОНИЧЕСКИЕ имена команд
 _RESOLVER_TO_TOOL: Dict[str, str] = {
     "files.list": "files.list",
     "files.read": "files.read",
@@ -64,8 +61,6 @@ def _map_resolver_to_tool(cmd: str, args: dict) -> tuple[str, dict]:
     mapped = _RESOLVER_TO_TOOL.get(cmd, "")
     return mapped, (args or {})
 
-# ---- Toolrunner proxy config -------------------------------------------------------
-
 _controller_cfg = _config.get("controller") or {}
 _proxy_commands = bool(_controller_cfg.get("proxy_commands", False))
 
@@ -74,11 +69,9 @@ _tr_base = (_toolrunner_cfg.get("base_url", "http://127.0.0.1:8011") or "").rstr
 _tr_timeout = int(_toolrunner_cfg.get("timeout_sec", 30))
 _tr_token = (_toolrunner_cfg.get("shared_token") or "").strip()
 
-# ---- Minimal in-process chat history ----------------------------------------------
 
 _history = deque(maxlen=12)  # [ {"role": "...", "content": "..."} ]
 
-# ---- Helpers: sanitize + RU quick intent fallback ---------------------------------
 
 def _clean_arg(s: Any) -> Any:
     if not isinstance(s, str):
@@ -92,8 +85,6 @@ def _clean_arg(s: Any) -> Any:
     s = s.replace("\\\\", "\\")
     return s
 
-# Очень быстрый fallback на случай, если резолвер не сработал/выключен.
-# Закрывает базовые русские формулировки: создать/прочитать/показать/открыть/допиши.
 _RU_PATTERNS: List[tuple[re.Pattern, str]] = [
     (re.compile(r"^(?:создай|создать)\s+файл\s+(.+)$", re.I),       "files.create"),
     (re.compile(r"^(?:прочитай|прочитать)\s+файл\s+(.+)$", re.I),   "files.read"),
@@ -122,7 +113,6 @@ def _ru_quick_intent(text: str) -> Optional[Dict[str, Any]]:
             return {"type": "command", "command": cmd, "args": {"path": g1, "text": g2}}
     return None
 
-# ---- Health / Diagnostics ----------------------------------------------------------
 
 @app.get("/healthz")
 def healthz():
@@ -150,7 +140,6 @@ def diagnostics():
         "model": _config.get("model") or {},
     }
 
-# ---- Chat -------------------------------------------------------------------------
 
 @app.post("/chat", response_model=ChatOut)
 def chat(inp: ChatIn):
@@ -161,12 +150,10 @@ def chat(inp: ChatIn):
     4) Fallback: быстрые RU-паттерны на случай, если (1) не сработал
     """
 
-    # 0) Быстрый RU fallback ДО всего прочего (минимальная латентность на частые фразы)
     fb = _ru_quick_intent(inp.text)
     if fb and fb.get("command") in ALLOWED:
         decision = fb
     else:
-        # 1) Решение: команда или чат через резолвер/роутер
         if _resolver is not None:
             res = _resolver.resolve(inp.text)
             if res.get("error"):
@@ -184,18 +171,15 @@ def chat(inp: ChatIn):
         else:
             decision = route(inp.text)
 
-    # 2) Ветка команды: sanitize, allowlist, прокси в toolrunner
     if decision["type"] == "command":
         cmd = decision.get("command", "") or ""
         args = decision.get("args", {}) or {}
 
-        # sanitize базовых ключей
         if isinstance(args, dict):
             for key in ("path", "pattern", "name", "text"):
                 if key in args:
                     args[key] = _clean_arg(args[key])
 
-        # не слать в toolrunner то, чего он не знает
         if cmd not in ALLOWED:
             return ChatOut(type="command", command=cmd, args=args, ok=False, error="E_UNKNOWN_COMMAND")
 
@@ -225,10 +209,8 @@ def chat(inp: ChatIn):
             except Exception as e:
                 return ChatOut(type="command", command=cmd, args=args, ok=False, error=f"E_TOOLRUNNER:{e}")
 
-        # если прокси выключен — отдать решение наверх как есть
         return ChatOut(type="command", command=cmd, args=args)
 
-    # 3) Ветка чата: авто-стиль
     mcfg = _config.get("model") or {}
     model = mcfg.get("name", "qwen2.5:1.5b")
     mhost = mcfg.get("host", "127.0.0.1")
