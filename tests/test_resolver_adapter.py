@@ -2,6 +2,7 @@ from pathlib import Path
 
 import controller.resolver_adapter as cra
 import toolrunner.app as tapp
+import httpx
 
 
 def test_resolve_context_cwd_matches_toolrunner_workspace(monkeypatch):
@@ -38,3 +39,22 @@ def test_resolve_context_cwd_matches_toolrunner_workspace(monkeypatch):
     adapter.resolve("hi")
 
     assert captured["payload"]["context"]["cwd"] == tr_workspace
+
+
+def test_resolve_returns_none_on_http_error(monkeypatch):
+    class DummyClient:
+        def __init__(self, timeout):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            pass
+
+        def post(self, url, json):
+            raise httpx.RequestError("boom", request=httpx.Request("POST", url))
+
+    monkeypatch.setattr(cra.httpx, "Client", DummyClient)
+    adapter = cra.ResolverAdapter(base_url="http://resolver", whitelist=[], workspace_root=".")
+    assert adapter.resolve("hi") is None
