@@ -145,75 +145,71 @@ def diagnostics():
     }
 
 
-@app.post("/chat", response_model=ChatOut)
-def chat(inp: ChatIn):
-    """
-    1) Резолвер (если включён)
-    2) Если команда и proxy включён — шлём в toolrunner
-    3) Иначе чат — авто-стиль (brief/smalltalk) через Ollama
+def _from_resolver(text: str) -> Dict[str, Any]:
+    """1) Резолвер (если включён)
+
     4) Fallback: быстрые RU-паттерны на случай, если (1) не сработал
     """
 
-    fb = _ru_quick_intent(inp.text)
+    fb = _ru_quick_intent(text)
     if fb and fb.get("command") in ALLOWED:
-        decision = fb
-    else:
-        if _resolver is not None:
-            res = _resolver.resolve(inp.text)
-            if res.get("error"):
-                decision = route(inp.text)
-            else:
-                mapped_cmd, mapped_args = _map_resolver_to_tool(res.get("command", ""), res.get("args") or {})
-                conf = float(res.get("confidence", 0.0))
-                if _use_legacy_when_low_conf and conf < _low_conf_threshold:
-                    decision = route(inp.text)
-                else:
-                    if mapped_cmd:
-                        decision = {"type": "command", "command": mapped_cmd, "args": mapped_args}
-                    else:
-                        decision = route(inp.text)
-        else:
-            decision = route(inp.text)
+        return fb
+    if _resolver is not None:
+        res = _resolver.resolve(text)
+        if res.get("error"):
+            return route(text)
+        mapped_cmd, mapped_args = _map_resolver_to_tool(res.get("command", ""), res.get("args") or {})
+        conf = float(res.get("confidence", 0.0))
+        if _use_legacy_when_low_conf and conf < _low_conf_threshold:
+            return route(text)
+        if mapped_cmd:
+            return {"type": "command", "command": mapped_cmd, "args": mapped_args}
+        return route(text)
+    return route(text)
 
-    if decision["type"] == "command":
-        cmd = decision.get("command", "") or ""
-        args = decision.get("args", {}) or {}
 
-        if isinstance(args, dict):
-            for key in ("path", "pattern", "mask", "name", "text"):
-                if key in args:
-                    args[key] = _clean_arg(args[key])
+def _proxy_toolrunner(cmd: str, args: Dict[str, Any]) -> ChatOut:
+    """2) Если команда и proxy включён — шлём в toolrunner"""
 
-        if cmd not in ALLOWED:
-            return ChatOut(type="command", command=cmd, args=args, ok=False, error="E_UNKNOWN_COMMAND")
+    if isinstance(args, dict):
+        for key in ("path", "pattern", "mask", "name", "text"):
+            if key in args:
+                args[key] = _clean_arg(args[key])
 
-        if _proxy_commands:
-            url = f"{_tr_base}/execute"
-            headers = {"X-Jarvis-Token": _tr_token} if _tr_token else {}
-            payload = {"command": cmd, "args": args}
-            try:
-                with httpx.Client(timeout=_tr_timeout) as client:
-                    r = client.post(url, json=payload, headers=headers)
+    if cmd not in ALLOWED:
+        return ChatOut(type="command", command=cmd, args=args, ok=False, error="E_UNKNOWN_COMMAND")
 
-                if r.status_code >= 400:
-                    is_json = r.headers.get("content-type", "").startswith("application/json")
-                    detail = (r.json() if is_json else {"detail": r.text}).get("detail", "E_COMMAND_FAILED")
-                    return ChatOut(type="command", command=cmd, args=args, ok=False, error=detail)
+    if _proxy_commands:
+        url = f"{_tr_base}/execute"
+        headers = {"X-Jarvis-Token": _tr_token} if _tr_token else {}
+        payload = {"command": cmd, "args": args}
+        try:
+            with httpx.Client(timeout=_tr_timeout) as client:
+                r = client.post(url, json=payload, headers=headers)
 
-                data = r.json()
-                return ChatOut(
-                    type="command",
-                    command=cmd,
-                    args=args,
-                    ok=bool(data.get("ok")),
-                    result=data.get("result"),
-                    error=data.get("error"),
-                )
+            if r.status_code >= 400:
+                is_json = r.headers.get("content-type", "").startswith("application/json")
+                detail = (r.json() if is_json else {"detail": r.text}).get("detail", "E_COMMAND_FAILED")
+                return ChatOut(type="command", command=cmd, args=args, ok=False, error=detail)
 
-            except Exception as e:
-                return ChatOut(type="command", command=cmd, args=args, ok=False, error=f"E_TOOLRUNNER:{e}")
+            data = r.json()
+            return ChatOut(
+                type="command",
+                command=cmd,
+                args=args,
+                ok=bool(data.get("ok")),
+                result=data.get("result"),
+                error=data.get("error"),
+            )
 
-        return ChatOut(type="command", command=cmd, args=args)
+        except Exception as e:
+            return ChatOut(type="command", command=cmd, args=args, ok=False, error=f"E_TOOLRUNNER:{e}")
+
+    return ChatOut(type="command", command=cmd, args=args)
+
+
+def _chat_with_model(user_text: str) -> ChatOut:
+    """3) Иначе чат — авто-стиль (brief/smalltalk) через Ollama"""
 
     mcfg = _config.get("model") or {}
     model = mcfg.get("name", "qwen2.5:1.5b")
@@ -225,7 +221,7 @@ def chat(inp: ChatIn):
     text = ollama_chat_auto(
         model=model,
         profiles=profiles,
-        user_text=inp.text,
+        user_text=user_text,
         history=list(_history),
         host=mhost,
         port=mport,
@@ -235,11 +231,21 @@ def chat(inp: ChatIn):
     if not text:
         text = ollama_chat(
             model=model,
-            messages=[{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": inp.text}],
+            messages=[{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": user_text}],
             sampling=_config.get("sampling") or {},
             host=mhost, port=mport, timeout_sec=mto,
         ).strip() or "Не знаю"
 
-    _history.append({"role": "user", "content": inp.text})
+    _history.append({"role": "user", "content": user_text})
     _history.append({"role": "assistant", "content": text})
     return ChatOut(type="chat", text=text)
+
+
+@app.post("/chat", response_model=ChatOut)
+def chat(inp: ChatIn):
+    decision = _from_resolver(inp.text)
+    if decision["type"] == "command":
+        cmd = decision.get("command", "") or ""
+        args = decision.get("args", {}) or {}
+        return _proxy_toolrunner(cmd, args)
+    return _chat_with_model(inp.text)
