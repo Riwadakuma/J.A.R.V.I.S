@@ -177,10 +177,12 @@ def do_execute(cfg: Dict[str, Any], command: str, args: Dict[str, Any]):
     )
 
 
-def do_diagnostics(cfg: Dict[str, Any], mode: str) -> int:
+def do_diagnostics(cfg: Dict[str, Any], mode: str | None = None) -> int:
     """Call controller's ``/diagnostics`` endpoint and print the result."""
     base = cfg["controller"]["base_url"].rstrip("/")
     timeout = int(cfg["controller"]["timeout_sec"])
+    if mode is None:
+        mode = (cfg.get("ui") or {}).get("mode", "pretty")
     spinner = Spinner(bool((cfg.get("ui") or {}).get("spinner", True)))
     spinner.start("diagnostics")
     status, body, _hdr, dur = http_get_json(f"{base}/diagnostics", timeout)
@@ -466,7 +468,12 @@ def main():
         mode = "raw"
 
     if args.diagnostics:
-        sys.exit(do_diagnostics(cfg, mode))
+        (cfg.setdefault("ui", {}))["mode"] = mode
+        result = do_diagnostics(cfg)
+        if isinstance(result, tuple):
+            status = result[0]
+            sys.exit(0 if status < 400 else 1)
+        sys.exit(result)
 
     # чтение из файла
     if args.file:
