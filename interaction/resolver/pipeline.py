@@ -83,6 +83,9 @@ class Resolver:
             confidence = 0.49
             explain.append("sandbox:violation")
 
+        if command == "files.list":
+            args.setdefault("mask", "*")
+
         out = {
             "trace_id": trace_id,
             "command": command,

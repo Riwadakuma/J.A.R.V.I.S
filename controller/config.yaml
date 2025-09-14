@@ -29,7 +29,7 @@ interaction:
   resolver_url: "http://127.0.0.1:8020"
   resolver_mode: "hybrid"         # rule-only | hybrid
   llm_threshold: 0.75             # порог для гибридного режима на стороне резольвера
-  use_legacy_when_low_conf: false # Никаких локальных «угадай-команд» в контроллере
+  use_legacy_when_low_conf: true
   low_conf_threshold: 0.50
   llm:
     enable: true
