@@ -51,9 +51,9 @@ def test_main_diagnostics_success(monkeypatch):
     monkeypatch.setattr(jarvis_cli, "load_cfg", lambda path=None: {})
     called = {}
 
-    def fake_diag(cfg):
+    def fake_diag(cfg, mode):
         called["called"] = True
-        return 200, {"ok": True}, {}, 0.0
+        return 0
 
     monkeypatch.setattr(jarvis_cli, "do_diagnostics", fake_diag, raising=False)
     monkeypatch.setattr(jarvis_cli, "printer", lambda mode, resp: 0)
@@ -70,8 +70,8 @@ def test_main_diagnostics_error(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["jarvis", "--diagnostics"])
     monkeypatch.setattr(jarvis_cli, "load_cfg", lambda path=None: {})
 
-    def fake_diag(cfg):
-        return 500, {"detail": "boom"}, {}, 0.0
+    def fake_diag(cfg, mode):
+        return 1
 
     monkeypatch.setattr(jarvis_cli, "do_diagnostics", fake_diag, raising=False)
     monkeypatch.setattr(jarvis_cli, "printer", lambda mode, resp: 0)
