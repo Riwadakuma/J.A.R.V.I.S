@@ -38,7 +38,10 @@ _RESOLVER_TO_TOOL: Dict[str, str] = {
     "system.config_set": "system.config_set",
 }
 _WHITELIST_RESOLVER = list(_RESOLVER_TO_TOOL.keys())
-_workspace_root = str((Path(__file__).parent.parent / "workspace").resolve())
+_workspace_root = _config.get(
+    "workspace_root",
+    str((Path(__file__).parent.parent / "workspace").resolve()),
+)
 
 _resolver = None
 if _resolver_enabled:
