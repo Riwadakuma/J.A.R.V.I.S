@@ -88,7 +88,7 @@ def _clean_arg(s: Any) -> Any:
 _RU_PATTERNS: List[tuple[re.Pattern, str]] = [
     (re.compile(r"^(?:создай|создать)\s+файл\s+(.+)$", re.I),       "files.create"),
     (re.compile(r"^(?:прочитай|прочитать)\s+файл\s+(.+)$", re.I),   "files.read"),
-    (re.compile(r"^(?:покажи|список|файлы)\s+(.+)$", re.I),         "files.list"),
+    (re.compile(r"^(?:покажи|список|файлы)(?:\s+(.*))?$", re.I),    "files.list"),
     (re.compile(r"^(?:открой|открыть)\s+файл\s+(.+)$", re.I),       "files.open"),
     (re.compile(r"^(?:допиши|добавь)\s+в\s+файл\s+(.+?)\s*[:\-–]\s*(.+)$", re.I), "files.append"),
 ]
@@ -99,13 +99,14 @@ def _ru_quick_intent(text: str) -> Optional[Dict[str, Any]]:
         m = rx.match(t)
         if not m:
             continue
-        g1 = _clean_arg(m.group(1))
+        g1 = _clean_arg(m.group(1)) if m.group(1) else None
         if cmd == "files.create":
             return {"type": "command", "command": cmd, "args": {"path": g1, "text": ""}}
         if cmd == "files.read":
             return {"type": "command", "command": cmd, "args": {"path": g1}}
         if cmd == "files.list":
-            return {"type": "command", "command": cmd, "args": {"pattern": g1}}
+            mask = g1 if g1 is not None else "*"
+            return {"type": "command", "command": cmd, "args": {"mask": mask}}
         if cmd == "files.open":
             return {"type": "command", "command": cmd, "args": {"path": g1}}
         if cmd == "files.append" and m.lastindex and m.lastindex >= 2:
@@ -176,7 +177,7 @@ def chat(inp: ChatIn):
         args = decision.get("args", {}) or {}
 
         if isinstance(args, dict):
-            for key in ("path", "pattern", "name", "text"):
+            for key in ("path", "pattern", "mask", "name", "text"):
                 if key in args:
                     args[key] = _clean_arg(args[key])
 
