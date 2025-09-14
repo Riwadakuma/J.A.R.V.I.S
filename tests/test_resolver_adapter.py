@@ -41,7 +41,7 @@ def test_resolve_context_cwd_matches_toolrunner_workspace(monkeypatch):
     assert captured["payload"]["context"]["cwd"] == tr_workspace
 
 
-def test_resolve_returns_none_on_http_error(monkeypatch):
+def test_resolve_returns_dict_on_http_error(monkeypatch):
     class DummyClient:
         def __init__(self, timeout):
             pass
@@ -57,4 +57,6 @@ def test_resolve_returns_none_on_http_error(monkeypatch):
 
     monkeypatch.setattr(cra.httpx, "Client", DummyClient)
     adapter = cra.ResolverAdapter(base_url="http://resolver", whitelist=[], workspace_root=".")
-    assert adapter.resolve("hi") is None
+    res = adapter.resolve("hi")
+    assert isinstance(res, dict)
+    assert "error" in res
