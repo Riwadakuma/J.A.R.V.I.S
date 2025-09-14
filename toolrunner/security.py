@@ -19,7 +19,9 @@ def workspace_path(rel: str, config: dict) -> Path:
     if not rel:
         raise ValueError("E_ARG_MISSING:path")
     p = (base / rel).resolve()
-    if not str(p).startswith(str(base)):
+    try:
+        p.relative_to(base)
+    except ValueError:
         raise ValueError("E_PATH_OUTSIDE_WORKSPACE")
     return p
 
