@@ -1,5 +1,6 @@
 import uuid
 import httpx
+from pathlib import Path
 from typing import List
 
 class ResolverAdapter:
@@ -8,7 +9,7 @@ class ResolverAdapter:
                  llm_enable: bool = True, llm_base_url: str = "http://127.0.0.1:11434", llm_model: str = "tinyllama"):
         self.base_url = base_url.rstrip("/")
         self.whitelist = whitelist
-        self.workspace_root = workspace_root
+        self.workspace_root = str(Path(workspace_root))
         self.mode = mode
         self.llm_threshold = llm_threshold
         self.timeout = timeout
