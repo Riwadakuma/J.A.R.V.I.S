@@ -469,7 +469,7 @@ def main():
 
     if args.diagnostics:
         (cfg.setdefault("ui", {}))["mode"] = mode
-        result = do_diagnostics(cfg)
+        result = do_diagnostics(cfg, mode)
         if isinstance(result, tuple):
             status = result[0]
             sys.exit(0 if status < 400 else 1)
