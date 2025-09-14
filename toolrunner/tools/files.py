@@ -60,6 +60,8 @@ def cmd_files_open(args: Dict[str, Any], config: Dict[str, Any]) -> str:
         raise ValueError("E_FORBIDDEN")
     rel = _clean_str(args.get("path", ""))
     p = workspace_path(rel, config)
+    if not (p.exists() and p.is_file()):
+        raise ValueError("E_NOT_FOUND")
     # Windows-only
     try:
         os.startfile(str(p))  # type: ignore[attr-defined]
@@ -72,6 +74,8 @@ def cmd_files_reveal(args: Dict[str, Any], config: Dict[str, Any]) -> str:
         raise ValueError("E_FORBIDDEN")
     rel = _clean_str(args.get("path", ""))
     p = workspace_path(rel, config)
+    if not (p.exists() and p.is_file()):
+        raise ValueError("E_NOT_FOUND")
     # Windows Explorer select
     try:
         subprocess.Popen(["explorer", "/select,", str(p)])
