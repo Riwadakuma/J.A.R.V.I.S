@@ -1,77 +1,57 @@
-config_version: 1
-
-# Включает режим диагностики и эндпоинт /diagnostics
-diagnostic_mode: false
+# controller/config.yaml
+# Да, это тот самый файл, который почему-то всегда теряется.
 
 server:
-  host: "127.0.0.1"   # не светимся наружу
+  host: "127.0.0.1"
   port: 8010
+  timeout_sec: 15
 
 model:
+  # Модель для обычного чата (НЕ для резольвера)
   name: "qwen2.5:1.5b"
   host: "127.0.0.1"
   port: 11434
-  timeout_sec: 60
-  keep_alive: "15m"
-  profiles:
-    balanced:
-      num_predict: 160
-      temperature: 0.5
-      top_p: 0.9
-      top_k: 40
-      repeat_penalty: 1.1
-      ctx: 1024
-    smalltalk:
-      num_predict: 160
-      temperature: 0.7
-      top_p: 0.9
-      top_k: 40
-      repeat_penalty: 1.08
-      ctx: 1024
-    tiny:
-      num_predict: 96
-      temperature: 0.3
-      top_p: 0.9
-      top_k: 40
-      repeat_penalty: 1.1
-      ctx: 768
-
-sampling:
-  temperature: 0.5
-  top_p: 0.9
-  top_k: 40
-  repeat_penalty: 1.1
-  num_predict: 160
-  ctx: 1024
+  # если нужен bearer — добавишь сюда потом:
+  # auth_token: ""
 
 controller:
-  proxy_commands: true    
+  # Когда резольвер возвращает команду — отправлять её в toolrunner
+  proxy_commands: true
+  # Доп. защита: не пропускать неизвестные команды (список в router.ALLOWED)
+  enforce_allowlist: true
 
 toolrunner:
-  base_url: "http://127.0.0.1:8011"
-  timeout_sec: 30
-  shared_token: ""          # задай позже; тогда контроллер будет слать X-Jarvis-Token
+  base_url: "http://127.0.0.1:8030"
+  timeout_sec: 10
 
-history:
-  enabled: true
-  path: "../data/history.jsonl"
-  retention_days: 30
-  max_bytes: 5000000        # 5 MB
-
-logging:
-  level: "INFO"
-  file: "../logs/controller.log"
-  rotate_mb: 10
-  backups: 5
-  
 interaction:
   enabled: true
   resolver_url: "http://127.0.0.1:8020"
-  resolver_mode: "hybrid"
-  llm_threshold: 0.75
-  use_legacy_when_low_conf: true
+  resolver_mode: "hybrid"         # rule-only | hybrid
+  llm_threshold: 0.75             # порог для гибридного режима на стороне резольвера
+  use_legacy_when_low_conf: false # Никаких локальных «угадай-команд» в контроллере
   low_conf_threshold: 0.50
   llm:
     enable: true
     base_url: "http://127.0.0.1:11434"
-    model: "qwen2.5:1.5b"
+    model: "tinyllama"            # подсказочная LLM внутри резольвера, если он так настроен
+    # auth_token: ""
+
+workspace_root: "B:/jarvis/workspace"
+
+logging:
+  level: "INFO"                   # DEBUG | INFO | WARNING | ERROR
+  access_log: true
+  json: false
+
+security:
+  # Базовая перестраховка для тебя же будущего
+  max_input_len: 4096
+  max_args_size: 16384
+  # В идеале — список команд дублируем в одном месте
+  forbid_unknown_commands: true
+
+healthcheck:
+  enabled: true
+  path: "/healthz"
+  interval_sec: 30
