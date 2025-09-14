@@ -156,7 +156,7 @@ def _from_resolver(text: str) -> Dict[str, Any]:
         return fb
     if _resolver is not None:
         res = _resolver.resolve(text)
-        if res.get("error"):
+        if not res or res.get("error"):
             return route(text)
         mapped_cmd, mapped_args = _map_resolver_to_tool(res.get("command", ""), res.get("args") or {})
         conf = float(res.get("confidence", 0.0))

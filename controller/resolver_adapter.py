@@ -39,5 +39,5 @@ class ResolverAdapter:
                 r = c.post(f"{self.base_url}/resolve", json=payload)
                 r.raise_for_status()
                 return r.json()
-        except Exception as e:
-            return {"trace_id": trace_id, "error": f"resolver_down: {e}"}
+        except httpx.HTTPError:
+            return None
