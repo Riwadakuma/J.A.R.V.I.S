@@ -17,7 +17,7 @@ def cmd_files_list(args: Dict[str, Any], config: Dict[str, Any]) -> List[str]:
     Рекурсивно ищет файлы по маске внутри workspace и возвращает относительные пути.
     Примеры масок: "*.txt", "notes/*.md", "**/*.py"
     """
-    mask = _clean_str(args.get("mask", ""))
+    mask = _clean_str(args.get("mask", "*") or "*")
     if not mask:
         return []
     base = _cfg_workspace(config)
