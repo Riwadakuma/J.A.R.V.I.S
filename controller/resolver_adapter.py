@@ -1,7 +1,7 @@
 import uuid
 import httpx
 from pathlib import Path
-from typing import List
+from typing import List, Dict, Any
 
 class ResolverAdapter:
     def __init__(self, base_url: str, whitelist: List[str], workspace_root: str,
@@ -17,7 +17,24 @@ class ResolverAdapter:
         self.llm_base_url = llm_base_url
         self.llm_model = llm_model
 
-    def resolve(self, text: str, locale: str = "ru-RU"):
+    def resolve(self, text: str, locale: str = "ru-RU") -> Dict[str, Any]:
+        """Send text to the resolver service.
+
+        Parameters
+        ----------
+        text: str
+            Phrase to be resolved into a structured command.
+        locale: str, optional
+            Locale for the resolution process.
+
+        Returns
+        -------
+        Dict[str, Any]
+            The JSON response from the resolver. If a network error occurs,
+            a dictionary with the ``error`` field describing the failure is
+            returned instead of raising an exception.
+        """
+
         trace_id = str(uuid.uuid4())
         payload = {
             "trace_id": trace_id,
@@ -30,14 +47,14 @@ class ResolverAdapter:
                 "llm": {
                     "enable": self.llm_enable,
                     "base_url": self.llm_base_url,
-                    "model": self.llm_model
-                }
-            }
+                    "model": self.llm_model,
+                },
+            },
         }
         try:
             with httpx.Client(timeout=self.timeout) as c:
                 r = c.post(f"{self.base_url}/resolve", json=payload)
                 r.raise_for_status()
                 return r.json()
-        except httpx.HTTPError:
-            return None
+        except httpx.HTTPError as e:
+            return {"error": str(e)}
