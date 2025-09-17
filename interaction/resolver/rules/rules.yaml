@@ -21,10 +21,10 @@ intents:
     slots: ["path"]
   - command: files.create
     keywords: ["создай", "создать файл", "new file"]
-    slots: ["path", "text?"]
+    slots: ["path", "content?"]
   - command: files.append
     keywords: ["допиши", "append", "добавь в файл"]
-    slots: ["path", "text"]
+    slots: ["path", "content"]
   - command: files.open
     keywords: ["открой", "open", "запусти"]
     slots: ["path"]
