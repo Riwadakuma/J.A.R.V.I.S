@@ -5,6 +5,14 @@ from pathlib import Path
 from typing import Dict, Any, Tuple, Optional
 import requests, yaml
 
+try:  # pragma: no cover - runtime import guard
+    from .stylist import get_stylist, say, say_key
+except ImportError:  # pragma: no cover - script execution fallback
+    from stylist import get_stylist, say, say_key  # type: ignore
+
+_stylist = get_stylist()
+_stylist.update_defaults(signature="командир", signature_short="сэр")
+
 DEFAULT_CFG = {
     "controller": {"base_url": "http://127.0.0.1:8010", "timeout_sec": 30},
     "toolrunner": {"base_url": "http://127.0.0.1:8011", "timeout_sec": 30, "shared_token": ""},
@@ -183,15 +191,22 @@ def do_diagnostics(cfg: Dict[str, Any], mode: str | None = None) -> int:
     timeout = int(cfg["controller"]["timeout_sec"])
     if mode is None:
         mode = (cfg.get("ui") or {}).get("mode", "pretty")
+    if mode == "pretty":
+        print(say_key("cli.diagnostics.start"))
     spinner = Spinner(bool((cfg.get("ui") or {}).get("spinner", True)))
-    spinner.start("diagnostics")
+    spinner.start(say_key("spinner.diagnostics"))
     status, body, _hdr, dur = http_get_json(f"{base}/diagnostics", timeout)
     spinner.stop()
     log_event(cfg, "diagnostics_response", {"status": status, "ms": round(dur, 1), "body": body})
     if status >= 400:
-        resp = {"type": "chat", "text": body.get("detail", "E_CONTROLLER")}
+        detail = body.get("detail", "E_CONTROLLER")
+        if mode == "pretty":
+            print(say_key("cli.diagnostics.failure", detail=detail))
+        resp = {"type": "chat", "text": say_key("errors.controller", detail=detail)}
         printer(mode, resp)
         return 1
+    if mode == "pretty":
+        print(say_key("cli.diagnostics.success"))
     return printer(mode, body)
 
 # ---------- spinner ----------
@@ -251,15 +266,29 @@ def print_raw(resp: Dict[str, Any]) -> int:
     """Print response without additional formatting."""
     t = resp.get("type")
     if t == "chat":
-        print(resp.get("text", "").strip())
+        print(say(resp.get("text", "")))
     elif t == "command":
         ok = resp.get("ok", None)
         if ok is None:
-            print(f"{resp.get('command','')} {json.dumps(resp.get('args') or {}, ensure_ascii=False)}")
+            preview = f"{resp.get('command','')} {json.dumps(resp.get('args') or {}, ensure_ascii=False)}"
+            print(say(preview))
+            if str(resp.get("error", "")).upper() == "CANCELLED":
+                print(say_key("status.cancelled"))
         else:
-            print(
-                json.dumps({"ok": ok, "result": resp.get("result"), "error": resp.get("error")}, ensure_ascii=False)
-            )
+            if ok and resp.get("result") is None:
+                print(say_key("status.ok"))
+            elif ok and isinstance(resp.get("result"), str):
+                print(say(resp.get("result")))
+            elif not ok:
+                err = resp.get("error") or "E_COMMAND_FAILED"
+                print(say_key("status.error", error=err))
+            else:
+                print(
+                    json.dumps(
+                        {"ok": ok, "result": resp.get("result"), "error": resp.get("error")},
+                        ensure_ascii=False,
+                    )
+                )
     else:
         print(json.dumps(resp, ensure_ascii=False))
     return 0
@@ -268,7 +297,7 @@ def print_pretty(resp: Dict[str, Any]) -> int:
     """Human-friendly printer that highlights chat and command responses."""
     t = resp.get("type")
     if t == "chat":
-        print(resp.get("text", "").strip())
+        print(say(resp.get("text", "")))
         return 0
     if t == "command":
         ok = resp.get("ok", None)
@@ -282,22 +311,28 @@ def print_pretty(resp: Dict[str, Any]) -> int:
             if fb:
                 info.append("fallback")
             suffix = ("  [" + ", ".join(info) + "]") if info else ""
-            print(
+            preview = (
                 f"[command] {resp.get('command')} {json.dumps(resp.get('args') or {}, ensure_ascii=False)}{suffix}"
             )
+            print(say(preview))
+            if str(resp.get("error", "")).upper() == "CANCELLED":
+                print(say_key("status.cancelled"))
             return 0
         if ok:
             res = resp.get("result")
             if isinstance(res, (dict, list)):
                 print(json.dumps(res, ensure_ascii=False, indent=2))
             elif res is None:
-                print("OK")
+                print(say_key("status.ok"))
             else:
-                print(str(res))
+                print(say(str(res)))
             return 0
         else:
             err = resp.get("error") or "E_COMMAND_FAILED"
-            print(f"ERROR: {err}", file=sys.stderr)
+            if str(err).upper() == "CANCELLED":
+                print(say_key("status.cancelled"), file=sys.stderr)
+            else:
+                print(say_key("status.error", error=err), file=sys.stderr)
             return 1
     print(json.dumps(resp, ensure_ascii=False))
     return 0
@@ -332,14 +367,15 @@ def run_once(
         Shell-style exit code.
     """
     spinner = Spinner(bool((cfg.get("ui") or {}).get("spinner", True)))
-    spinner.start("thinking")
+    spinner.start(say_key("spinner.thinking"))
     status, chat, headers, dur_ms = do_chat(cfg, text)
     spinner.stop()
 
     log_event(cfg, "chat_response", {"status": status, "ms": round(dur_ms, 1), "body": chat})
 
     if status >= 400:
-        resp = {"type": "chat", "text": chat.get("detail", "E_CONTROLLER")}
+        detail = chat.get("detail", "E_CONTROLLER")
+        resp = {"type": "chat", "text": say_key("errors.controller", detail=detail)}
         return printer(mode, resp)
 
     # поддержка метаданных от контроллера (если они включены)
@@ -363,9 +399,8 @@ def run_once(
         if (cfg.get("ui") or {}).get("confirm_on_low_conf"):
             conf = (meta.get("resolver") or {}).get("confidence")
             if isinstance(conf, (int, float)) and conf < 0.75:
-                yn = input(
-                    f"Уверенность {conf:.2f}. Выполнить команду {cmd}? [y/N] "
-                ).strip().lower()
+                prompt = say_key("prompts.confirm_low_conf", confidence=conf, command=cmd)
+                yn = input(prompt).strip().lower()
                 if yn not in ("y", "yes", "д", "да"):
                     out = {
                         "type": "command",
@@ -390,7 +425,7 @@ def run_once(
             }
             return printer(mode, out)
 
-        spinner.start("execute")
+        spinner.start(say_key("spinner.execute"))
         st2, out, _hdr2, dur2 = do_execute(cfg, cmd, args)
         spinner.stop()
         log_event(cfg, "execute_response", {"status": st2, "ms": round(dur2, 1), "body": out})
@@ -402,7 +437,7 @@ def run_once(
                 "args": args,
                 "ok": False,
                 "result": None,
-                "error": (out.get("detail") or "E_COMMAND_FAILED"),
+                "error": out.get("detail") or "E_COMMAND_FAILED",
             }
             return printer(mode, resp)
 
@@ -422,26 +457,28 @@ def run_once(
 
 def repl(cfg: Dict[str, Any], mode: str, no_exec: bool, verbose: int):
     """Interactive shell for communicating with JARVIS."""
-    print("JARVIS CLI. Введите запрос. Ctrl+C — выход.")
+    print(say_key("cli.greeting"))
     while True:
         try:
             line = input("> ").strip()
             if not line:
                 continue
             if line in ("/q", "/quit", "/exit"):
+                print(say_key("cli.goodbye"))
                 break
             if line == "/json":
-                mode = "json"; print("mode=json"); continue
+                mode = "json"; print(say_key("cli.mode_switch", mode="json")); continue
             if line == "/pretty":
-                mode = "pretty"; print("mode=pretty"); continue
+                mode = "pretty"; print(say_key("cli.mode_switch", mode="pretty")); continue
             if line == "/raw":
-                mode = "raw"; print("mode=raw"); continue
+                mode = "raw"; print(say_key("cli.mode_switch", mode="raw")); continue
             code = run_once(cfg, line, mode, no_exec=no_exec, verbose=verbose)
             if code != 0:
                 # не валим REPL из-за ошибки команды
                 pass
         except KeyboardInterrupt:
             print()
+            print(say_key("cli.goodbye"))
             break
 
 # ---------- main ----------
@@ -479,7 +516,7 @@ def main():
     if args.file:
         pth = Path(args.file)
         if not pth.exists():
-            print("E_FILE_NOT_FOUND", file=sys.stderr)
+            print(say_key("errors.file_not_found", path=str(pth)), file=sys.stderr)
             sys.exit(1)
         text = pth.read_text(encoding="utf-8", errors="ignore")
         sys.exit(run_once(cfg, text, mode, no_exec=args.no_exec, verbose=args.verbose))
