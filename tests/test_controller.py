@@ -1,6 +1,9 @@
 from fastapi.testclient import TestClient
 from controller.app import app
 import controller.app as capp
+import controller.resolver_adapter as cra
+import toolrunner.app as tapp
+import interaction.resolver.main as resolver_main
 
 
 def test_chat_branch(monkeypatch):
@@ -67,3 +70,93 @@ def test_toolrunner_error(monkeypatch):
     assert data["type"] == "command"
     assert data["ok"] is False
     assert data["error"].startswith("E_TOOLRUNNER")
+
+
+def test_controller_toolrunner_appends_content(monkeypatch, tmp_path):
+    monkeypatch.setattr(capp, "_resolver", None)
+    monkeypatch.setattr(capp, "_proxy_commands", True)
+    monkeypatch.setattr(tapp, "_config", {"paths": {"workspace": str(tmp_path)}})
+
+    tr_client = TestClient(tapp.app)
+    captured: list[dict] = []
+
+    class ToolrunnerClient:
+        def __init__(self, timeout):
+            self._timeout = timeout
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            pass
+
+        def post(self, url, json, headers):
+            captured.append(json)
+            return tr_client.post("/execute", json=json)
+
+    monkeypatch.setattr(capp.httpx, "Client", ToolrunnerClient)
+
+    client = TestClient(app)
+    r = client.post("/chat", json={"text": "допиши в файл note.txt: привет"})
+    assert r.status_code == 200
+    data = r.json()
+    assert data["type"] == "command"
+    assert data["command"] == "files.append"
+    assert data["ok"] is True
+    assert (tmp_path / "note.txt").read_text(encoding="utf-8") == "привет"
+    assert captured[-1]["args"]["content"] == "привет"
+    assert "text" not in captured[-1]["args"]
+
+
+def test_controller_resolver_toolrunner_create_content(monkeypatch, tmp_path):
+    monkeypatch.setattr(tapp, "_config", {"paths": {"workspace": str(tmp_path)}})
+    monkeypatch.setattr(capp, "_proxy_commands", True)
+    monkeypatch.setattr(capp, "_workspace_root", str(tmp_path))
+    monkeypatch.setattr(capp, "_ru_quick_intent", lambda text: None)
+
+    tr_client = TestClient(tapp.app)
+    resolver_client = TestClient(resolver_main.app)
+    captured: list[dict] = []
+
+    class MultiplexClient:
+        def __init__(self, timeout):
+            self._timeout = timeout
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            pass
+
+        def post(self, url, json, headers=None):
+            if url.endswith("/execute"):
+                captured.append(json)
+                return tr_client.post("/execute", json=json, headers=headers or {})
+            if url.endswith("/resolve"):
+                return resolver_client.post("/resolve", json=json)
+            raise AssertionError(f"unexpected url: {url}")
+
+    monkeypatch.setattr(capp.httpx, "Client", MultiplexClient)
+    monkeypatch.setattr(cra.httpx, "Client", MultiplexClient)
+
+    import interaction.resolver.pipeline as resolver_pipeline
+
+    monkeypatch.setattr(resolver_pipeline, "ask_ollama", lambda *args, **kwargs: None)
+
+    adapter = cra.ResolverAdapter(
+        base_url="http://resolver",
+        whitelist=list(capp._WHITELIST_RESOLVER),
+        workspace_root=str(tmp_path),
+    )
+    monkeypatch.setattr(capp, "_resolver", adapter)
+
+    client = TestClient(app)
+    r = client.post("/chat", json={"text": "создай файл note.txt с содержимым привет"})
+    assert r.status_code == 200
+    data = r.json()
+    assert data["type"] == "command"
+    assert data["command"] == "files.create"
+    assert data["ok"] is True
+    assert (tmp_path / "note.txt").read_text(encoding="utf-8") == "привет"
+    assert captured[-1]["args"]["content"] == "привет"
+    assert "text" not in captured[-1]["args"]
