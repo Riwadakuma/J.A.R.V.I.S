@@ -60,8 +60,22 @@ def extract_slots(text: str) -> Dict[str, str]:
         slots["key"], slots["value"] = mc.group(1), mc.group(2).strip().strip('"').strip("'")
 
     # текст для дописывания/создания: после "допиши" или "с содержимым"
-    mt = re.search(r"(?:допиши|с содержимым)\s+(.+)$", text)
-    if mt and "text" not in slots:
-        slots["text"] = mt.group(1).strip().strip('"').strip("'")
+    content: str | None = None
+    mt = re.search(r"(?:допиши|добавь)\s+в\s+файл\s+.+?[:\-–]\s*(.+)$", text)
+    if mt:
+        content = mt.group(1)
+    else:
+        mt = re.search(r"с содержимым\s+(.+)$", text)
+        if mt:
+            content = mt.group(1)
+        else:
+            mt = re.search(r"(?:допиши|добавь)\s+(.+)$", text)
+            if mt:
+                content = mt.group(1)
+
+    if content and "content" not in slots:
+        value = content.strip().strip('"').strip("'")
+        if value:
+            slots["content"] = value
 
     return slots
