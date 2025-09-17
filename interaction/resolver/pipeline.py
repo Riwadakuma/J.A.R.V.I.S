@@ -10,6 +10,12 @@ from .utils.fuzzy import try_fuzzy_path
 from .utils.safety import sandbox_ok, classify_write
 from .llm import ask_ollama
 
+
+def _normalize_content_slot(slots: Dict[str, Any]) -> Dict[str, Any]:
+    if "text" in slots and "content" not in slots:
+        slots["content"] = slots.pop("text")
+    return slots
+
 @dataclass
 class Cfg:
     mode: str = "hybrid"           # rule-only | hybrid
@@ -75,6 +81,7 @@ class Resolver:
         workspace: Path,
     ) -> Dict[str, Any]:
         args = dict(slots or {})
+        args = _normalize_content_slot(args)
         explain = list(why or [])
 
         if "path" in args and not sandbox_ok(workspace, args["path"]):
@@ -115,6 +122,7 @@ class Resolver:
 
         # 2) извлекаем слоты
         slots = extract_slots(t)
+        slots = _normalize_content_slot(slots)
 
         # 3) правило-интент
         intent = self._match_intent(t)
@@ -150,6 +158,7 @@ class Resolver:
                         intent["command"] = cmd or intent["command"]
                         for k, v in args.items():
                             slots.setdefault(k, v)
+                        slots = _normalize_content_slot(slots)
                         intent["score"] = max(intent["score"], cfg.llm_threshold)
                         intent["why"].append("llm:disambiguation")
             except Exception:
