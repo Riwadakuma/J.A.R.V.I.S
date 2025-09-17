@@ -104,7 +104,7 @@ def _ru_quick_intent(text: str) -> Optional[Dict[str, Any]]:
             continue
         g1 = _clean_arg(m.group(1)) if m.group(1) else None
         if cmd == "files.create":
-            return {"type": "command", "command": cmd, "args": {"path": g1, "text": ""}}
+            return {"type": "command", "command": cmd, "args": {"path": g1, "content": ""}}
         if cmd == "files.read":
             return {"type": "command", "command": cmd, "args": {"path": g1}}
         if cmd == "files.list":
@@ -114,7 +114,7 @@ def _ru_quick_intent(text: str) -> Optional[Dict[str, Any]]:
             return {"type": "command", "command": cmd, "args": {"path": g1}}
         if cmd == "files.append" and m.lastindex and m.lastindex >= 2:
             g2 = _clean_arg(m.group(2))
-            return {"type": "command", "command": cmd, "args": {"path": g1, "text": g2}}
+            return {"type": "command", "command": cmd, "args": {"path": g1, "content": g2}}
     return None
 
 
@@ -172,7 +172,9 @@ def _proxy_toolrunner(cmd: str, args: Dict[str, Any]) -> ChatOut:
     """2) Если команда и proxy включён — шлём в toolrunner"""
 
     if isinstance(args, dict):
-        for key in ("path", "pattern", "mask", "name", "text"):
+        if "text" in args and "content" not in args:
+            args["content"] = args.pop("text")
+        for key in ("path", "pattern", "mask", "name", "content"):
             if key in args:
                 args[key] = _clean_arg(args[key])
 
