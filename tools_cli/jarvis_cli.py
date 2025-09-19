@@ -310,6 +310,15 @@ def print_pretty(resp: Dict[str, Any]) -> int:
             fb = meta.get("resolver", {}).get("fallback_used")
             if fb:
                 info.append("fallback")
+            planner_rule = (meta.get("planner") or {}).get("planner_rule_id")
+            if planner_rule:
+                info.append(f"rule={planner_rule}")
+            planner_error = (meta.get("planner") or {}).get("error")
+            if planner_error:
+                info.append(str(planner_error))
+            executor_errors = (meta.get("executor") or {}).get("errors") or []
+            if executor_errors:
+                info.append("exec_error")
             suffix = ("  [" + ", ".join(info) + "]") if info else ""
             preview = (
                 f"[command] {resp.get('command')} {json.dumps(resp.get('args') or {}, ensure_ascii=False)}{suffix}"
@@ -383,6 +392,10 @@ def run_once(
 
     if chat.get("type") == "command" and chat.get("command"):
         cmd, args = chat["command"], chat.get("args") or {}
+        planner_meta = (meta.get("planner") or {})
+        preview_key = (planner_meta.get("stylist") or {}).get("preview")
+        if preview_key and mode == "pretty":
+            print(say_key(preview_key, **args))
         if no_exec:
             out = {
                 "type": "command",
