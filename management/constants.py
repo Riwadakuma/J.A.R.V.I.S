@@ -1,4 +1,4 @@
-management/constants.py"""Shared constants and enumerations for the management module."""
+"""Shared constants and enumerations for the management module."""
 from __future__ import annotations
 
 from dataclasses import dataclass
