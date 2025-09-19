@@ -1,0 +1,25 @@
+features:
+  planner:
+    enabled: true
+  strict_acl: true
+  provenance:
+    verbose: false
+resolver:
+  remote_url: "http://127.0.0.1:8020"
+  mode: "hybrid"
+  timeout: 2.5
+  low_conf_threshold: 0.5
+  use_legacy_when_low_conf: true
+  llm_threshold: 0.75
+  llm_enable: true
+  llm_base_url: "http://127.0.0.1:11434"
+  llm_model: "tinyllama"
+planner:
+  rules_path: "planner/rules.yaml"
+executor:
+  toolrunner:
+    base_url: "http://127.0.0.1:8011"
+    timeout_sec: 30
+    token: ""
+stylist:
+  templates: "stylist/templates.yaml"
