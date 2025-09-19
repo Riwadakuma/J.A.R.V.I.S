@@ -15,3 +15,4 @@ class ChatOut(BaseModel):
     ok: Optional[bool] = None
     result: Optional[Any] = None
     error: Optional[str] = None
+    meta: Optional[Dict[str, Any]] = None
