@@ -7,6 +7,8 @@ import interaction.resolver.main as resolver_main
 
 
 def test_chat_branch(monkeypatch):
+    monkeypatch.setattr(capp, "_pipeline", None)
+    monkeypatch.setattr(capp, "_planner_enabled", False)
     monkeypatch.setattr(capp, "_resolver", None)
     monkeypatch.setattr(capp, "ollama_chat", lambda **kwargs: "hi")
     client = TestClient(app)
@@ -18,6 +20,8 @@ def test_chat_branch(monkeypatch):
 
 
 def test_command_with_proxy(monkeypatch):
+    monkeypatch.setattr(capp, "_pipeline", None)
+    monkeypatch.setattr(capp, "_planner_enabled", False)
     monkeypatch.setattr(capp, "_resolver", None)
     monkeypatch.setattr(capp, "_proxy_commands", True)
 
@@ -49,6 +53,8 @@ def test_command_with_proxy(monkeypatch):
 
 
 def test_toolrunner_error(monkeypatch):
+    monkeypatch.setattr(capp, "_pipeline", None)
+    monkeypatch.setattr(capp, "_planner_enabled", False)
     monkeypatch.setattr(capp, "_resolver", None)
     monkeypatch.setattr(capp, "_proxy_commands", True)
 
@@ -73,6 +79,8 @@ def test_toolrunner_error(monkeypatch):
 
 
 def test_controller_toolrunner_appends_content(monkeypatch, tmp_path):
+    monkeypatch.setattr(capp, "_pipeline", None)
+    monkeypatch.setattr(capp, "_planner_enabled", False)
     monkeypatch.setattr(capp, "_resolver", None)
     monkeypatch.setattr(capp, "_proxy_commands", True)
     monkeypatch.setattr(tapp, "_config", {"paths": {"workspace": str(tmp_path)}})
@@ -109,6 +117,8 @@ def test_controller_toolrunner_appends_content(monkeypatch, tmp_path):
 
 
 def test_controller_resolver_toolrunner_create_content(monkeypatch, tmp_path):
+    monkeypatch.setattr(capp, "_pipeline", None)
+    monkeypatch.setattr(capp, "_planner_enabled", False)
     monkeypatch.setattr(tapp, "_config", {"paths": {"workspace": str(tmp_path)}})
     monkeypatch.setattr(capp, "_proxy_commands", True)
     monkeypatch.setattr(capp, "_workspace_root", str(tmp_path))
@@ -160,3 +170,67 @@ def test_controller_resolver_toolrunner_create_content(monkeypatch, tmp_path):
     assert (tmp_path / "note.txt").read_text(encoding="utf-8") == "привет"
     assert captured[-1]["args"]["content"] == "привет"
     assert "text" not in captured[-1]["args"]
+
+
+def test_pipeline_executes_with_local_transport(monkeypatch, tmp_path):
+    from core.pipeline import build_local_pipeline
+    from resolver.resolver import ResolverConfig
+
+    resolver_cfg = ResolverConfig(
+        whitelist=list(capp._WHITELIST_RESOLVER),
+        remote_url=None,
+        mode="quick",
+    )
+    pipeline = build_local_pipeline(
+        resolver_config=resolver_cfg,
+        planner_rules_path=capp._planner_rules_path,
+        toolrunner_config={"paths": {"workspace": str(tmp_path)}},
+        strict_acl=True,
+    )
+    monkeypatch.setattr(capp, "_pipeline", pipeline)
+    monkeypatch.setattr(capp, "_planner_enabled", True)
+    monkeypatch.setattr(capp, "_workspace_root", str(tmp_path))
+
+    client = TestClient(app)
+    r = client.post("/chat", json={"text": "создай файл alpha.txt с содержимым тест"})
+    assert r.status_code == 200
+    data = r.json()
+    assert data["type"] == "command"
+    assert data["ok"] is True
+    assert data["command"] == "files.create"
+    assert (tmp_path / "alpha.txt").read_text(encoding="utf-8") == "тест"
+    meta = data.get("meta") or {}
+    assert meta.get("planner", {}).get("planner_rule_id") == "fs_create"
+    assert meta.get("executor", {}).get("ok") is True
+
+
+def test_pipeline_executes_with_local_transport(monkeypatch, tmp_path):
+    from core.pipeline import build_local_pipeline
+    from resolver.resolver import ResolverConfig
+
+    resolver_cfg = ResolverConfig(
+        whitelist=list(capp._WHITELIST_RESOLVER),
+        remote_url=None,
+        mode="quick",
+    )
+    pipeline = build_local_pipeline(
+        resolver_config=resolver_cfg,
+        planner_rules_path=capp._planner_rules_path,
+        toolrunner_config={"paths": {"workspace": str(tmp_path)}},
+        strict_acl=True,
+    )
+    monkeypatch.setattr(capp, "_pipeline", pipeline)
+    monkeypatch.setattr(capp, "_planner_enabled", True)
+    monkeypatch.setattr(capp, "_workspace_root", str(tmp_path))
+
+    client = TestClient(app)
+    r = client.post("/chat", json={"text": "создай файл alpha.txt с содержимым тест"})
+    assert r.status_code == 200
+    data = r.json()
+    assert data["type"] == "command"
+    assert data["ok"] is True
+    assert data["command"] == "files.create"
+    assert (tmp_path / "alpha.txt").read_text(encoding="utf-8") == "тест"
+    meta = data.get("meta") or {}
+    assert meta.get("planner", {}).get("planner_rule_id") == "fs_create"
+    assert meta.get("executor", {}).get("ok") is True

@@ -1,0 +1,105 @@
+version: 1
+commands:
+  files.list:
+    rule_id: fs_list
+    acl: [fs.read]
+    confirmation_level: 0
+    stylist:
+      preview: planner.preview.files.list
+    steps:
+      - id: fetch
+        tool: files.list
+        use_intent_args: true
+  files.read:
+    rule_id: fs_read
+    acl: [fs.read]
+    confirmation_level: 0
+    stylist:
+      preview: planner.preview.files.read
+    steps:
+      - id: fetch
+        tool: files.read
+        use_intent_args: true
+  files.create:
+    rule_id: fs_create
+    acl: [fs.write]
+    confirmation_level: 1
+    stylist:
+      preview: planner.preview.files.create
+      confirmation: planner.confirm.write
+    steps:
+      - id: write
+        tool: files.create
+        use_intent_args: true
+  files.append:
+    rule_id: fs_append
+    acl: [fs.write]
+    confirmation_level: 1
+    stylist:
+      preview: planner.preview.files.append
+      confirmation: planner.confirm.write
+    steps:
+      - id: write
+        tool: files.append
+        use_intent_args: true
+  files.open:
+    rule_id: fs_open
+    acl: [fs.desktop]
+    confirmation_level: 1
+    stylist:
+      preview: planner.preview.files.open
+    steps:
+      - id: launch
+        tool: files.open
+        use_intent_args: true
+  files.reveal:
+    rule_id: fs_reveal
+    acl: [fs.desktop]
+    confirmation_level: 1
+    stylist:
+      preview: planner.preview.files.reveal
+    steps:
+      - id: launch
+        tool: files.reveal
+        use_intent_args: true
+  files.shortcut_to_desktop:
+    rule_id: fs_shortcut
+    acl: [fs.desktop]
+    confirmation_level: 1
+    stylist:
+      preview: planner.preview.files.shortcut
+    steps:
+      - id: launch
+        tool: files.shortcut_to_desktop
+        use_intent_args: true
+  system.help:
+    rule_id: sys_help
+    acl: [system]
+    confirmation_level: 0
+    stylist:
+      preview: planner.preview.system.help
+    steps:
+      - id: run
+        tool: system.help
+        use_intent_args: true
+  system.config_get:
+    rule_id: sys_cfg_get
+    acl: [system]
+    confirmation_level: 0
+    stylist:
+      preview: planner.preview.system.config_get
+    steps:
+      - id: run
+        tool: system.config_get
+        use_intent_args: true
+  system.config_set:
+    rule_id: sys_cfg_set
+    acl: [system]
+    confirmation_level: 2
+    stylist:
+      preview: planner.preview.system.config_set
+      confirmation: planner.confirm.write
+    steps:
+      - id: run
+        tool: system.config_set
+        use_intent_args: true
