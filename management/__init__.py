@@ -101,3 +101,20 @@ CAPACITY_LEVELS = {
     "limited": 0.45,
     "rest": 0.0,
 }
+
+
+# Re-export service layer for convenience so tests can import `ManagementService`
+# directly from the `management` package.
+from .service import ManagementService  # noqa: E402
+
+__all__ = [
+    "AgentState",
+    "TaskType",
+    "PriorityLevel",
+    "TaskStatus",
+    "TrustLevel",
+    "PriorityRule",
+    "PRIORITY_RULES",
+    "CAPACITY_LEVELS",
+    "ManagementService",
+]
