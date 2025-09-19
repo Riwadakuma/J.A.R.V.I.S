@@ -30,6 +30,7 @@ uvicorn interaction.resolver.main:app --host 127.0.0.1 --port 8020 --reload
 ```
 
 ### Структура
+- `management/` — планировщик задач, напоминания, триггеры wellbeing
 - `controller/` — REST API, интеграция с резолвером и LLM
 - `toolrunner/` — файловые/системные инструменты
 - `interaction/resolver/` — правила, нормализация, слоты, LLM-поддержка
