@@ -18,11 +18,11 @@ def _normalize_content_slot(slots: Dict[str, Any]) -> Dict[str, Any]:
 
 @dataclass
 class Cfg:
-    mode: str = "hybrid"           # rule-only | hybrid
+    mode: str = "hybrid"  # rule-only | hybrid
     llm_threshold: float = 0.75
     confirm_low_from: float = 0.50
     confirm_low_to: float = 0.74
-    fallback_command: str = "files.list"
+    fallback_command: str = ""
     workspace_root: str = "workspace"
     llm_enable: bool = True
     llm_base_url: str = "http://127.0.0.1:11434"
@@ -79,28 +79,36 @@ class Resolver:
         confidence: float,
         why: List[str],
         workspace: Path,
+        *,
+        fallback: bool = False,
     ) -> Dict[str, Any]:
         args = dict(slots or {})
         args = _normalize_content_slot(args)
         explain = list(why or [])
+        cmd = command or ""
+        used_fallback = bool(fallback)
 
-        if "path" in args and not sandbox_ok(workspace, args["path"]):
-            command = "files.list"
+        if cmd and "path" in args and not sandbox_ok(workspace, args["path"]):
+            cmd = "files.list"
             args = {"mask": args.get("mask", "*")}
-            confidence = 0.49
+            confidence = min(confidence, 0.49)
             explain.append("sandbox:violation")
+            used_fallback = True
 
-        if command == "files.list":
+        if cmd == "files.list":
             args.setdefault("mask", "*")
+
+        if not cmd:
+            args = {}
 
         out = {
             "trace_id": trace_id,
-            "command": command,
+            "command": cmd,
             "args": args,
             "confidence": confidence,
-            "fallback_used": command == "files.list",
+            "fallback_used": used_fallback or not cmd,
             "explain": explain,
-            "write": classify_write(command),
+            "write": classify_write(cmd),
         }
         return out
 
@@ -112,6 +120,7 @@ class Resolver:
             llm_enable=bool(config.get("llm", {}).get("enable", True)),
             llm_base_url=config.get("llm", {}).get("base_url", "http://127.0.0.1:11434"),
             llm_model=config.get("llm", {}).get("model", "tinyllama"),
+            fallback_command=str(config.get("fallback_command", "")),
         )
 
         workspace = Path(cfg.workspace_root)
@@ -166,13 +175,30 @@ class Resolver:
 
         # 8) fallback, если так и не распознали
         if not intent.get("command"):
+            explain = list(intent["why"])
+            if "fallback:rule_miss" not in explain:
+                explain.append("fallback:rule_miss")
+            if cfg.fallback_command:
+                fallback_slots: Dict[str, Any] = {}
+                if cfg.fallback_command == "files.list":
+                    fallback_slots = {"mask": slots.get("mask", "*")}
+                return self._pack(
+                    trace_id,
+                    cfg.fallback_command,
+                    fallback_slots,
+                    0.49,
+                    explain,
+                    workspace,
+                    fallback=True,
+                )
             return self._pack(
                 trace_id,
-                cfg.fallback_command,
-                {"mask": slots.get("mask", "*")},
-                0.49,
-                intent["why"],
+                "",
+                {},
+                0.0,
+                explain,
                 workspace,
+                fallback=True,
             )
 
         conf = min(0.99, intent["score"])
