@@ -212,11 +212,14 @@ class ManagementService:
 
     def finish_task(self, task_id: int, *, timestamp: datetime | None = None) -> ActionResult:
         task = self.get_task(task_id)
-        now = timestamp or _now()
+        recorded_at = _now()
+        completed_at = timestamp or recorded_at
         active_start = task.active_session_started_at
         duration_minutes = None
         if active_start:
-            duration_minutes = int(round((now - active_start).total_seconds() / 60))
+            delta = completed_at - active_start
+            minutes = int(round(delta.total_seconds() / 60))
+            duration_minutes = minutes if minutes >= 0 else None
         self.db.update(
             """
             UPDATE tasks
@@ -225,15 +228,15 @@ class ManagementService:
             """,
             (
                 TaskStatus.COMPLETED.value,
-                now.isoformat(),
-                now.isoformat(),
+                completed_at.isoformat(),
+                recorded_at.isoformat(),
                 task_id,
             ),
         )
         self._log(
             "task_finished",
             task_id=task_id,
-            payload={"timestamp": now.isoformat(), "duration_minutes": duration_minutes},
+            payload={"timestamp": completed_at.isoformat(), "duration_minutes": duration_minutes},
         )
         if duration_minutes and duration_minutes >= 240:
             self._log(
@@ -515,7 +518,7 @@ class ManagementService:
         completed = self.db.query(
             """
             SELECT * FROM tasks
-            WHERE completed_at IS NOT NULL AND completed_at >= ? AND completed_at < ?
+            WHERE status = 'completed' AND updated_at >= ? AND updated_at < ?
             """,
             (day_start.isoformat(), day_end.isoformat()),
         )
