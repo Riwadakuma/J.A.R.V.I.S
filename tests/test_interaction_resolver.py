@@ -72,3 +72,21 @@ def test_resolve_append_with_content(monkeypatch, tmp_path):
     assert data["command"] == "files.append"
     assert data["args"]["path"] == "foo.txt"
     assert data["args"]["content"] == "привет"
+
+
+def test_resolve_unknown_phrase_returns_no_command(tmp_path):
+    client = TestClient(app)
+    payload = {
+        "trace_id": "1",
+        "text": "статус",
+        "context": {"cwd": str(tmp_path)},
+        "constraints": {},
+        "config": {},
+    }
+    r = client.post("/resolve", json=payload)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["command"] == ""
+    assert data["args"] == {}
+    assert data["fallback_used"] is True
+    assert "fallback:rule_miss" in data["explain"]
