@@ -1,4 +1,4 @@
-from resolver.resolver import ResolverService, ResolverConfig
+from interaction.resolver.resolver import ResolverConfig, ResolverService
 
 
 def make_resolver():
