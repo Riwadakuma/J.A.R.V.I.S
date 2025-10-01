@@ -174,7 +174,7 @@ def test_controller_resolver_toolrunner_create_content(monkeypatch, tmp_path):
 
 def test_pipeline_executes_with_local_transport(monkeypatch, tmp_path):
     from core.pipeline import build_local_pipeline
-    from resolver.resolver import ResolverConfig
+    from interaction.resolver.resolver import ResolverConfig
 
     resolver_cfg = ResolverConfig(
         whitelist=list(capp._WHITELIST_RESOLVER),
@@ -206,7 +206,7 @@ def test_pipeline_executes_with_local_transport(monkeypatch, tmp_path):
 
 def test_pipeline_executes_with_local_transport(monkeypatch, tmp_path):
     from core.pipeline import build_local_pipeline
-    from resolver.resolver import ResolverConfig
+    from interaction.resolver.resolver import ResolverConfig
 
     resolver_cfg = ResolverConfig(
         whitelist=list(capp._WHITELIST_RESOLVER),
