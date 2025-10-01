@@ -11,9 +11,9 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from config.loader import load_config as load_core_config
+from core.config.loader import load_config as load_core_config
 from core.pipeline import Pipeline, PipelineResult, build_http_pipeline
-from resolver.resolver import ResolverConfig
+from interaction.resolver.resolver import ResolverConfig
 
 from core.controller.contracts import ChatIn, ChatOut
 from core.controller.router import route, ALLOWED
@@ -32,7 +32,11 @@ _provenance_verbose = bool(((_core_features.get("provenance") or {}).get("verbos
 
 _root_dir = Path(__file__).resolve().parents[2]
 
-_planner_rules_path = Path((_core_config.get("planner") or {}).get("rules_path", "planner/rules.yaml"))
+_planner_rules_path = Path(
+    (_core_config.get("planner") or {}).get(
+        "rules_path", "toolrunner/management/planner/rules.yaml"
+    )
+)
 if not _planner_rules_path.is_absolute():
     _planner_rules_path = (_root_dir / _planner_rules_path).resolve()
 
