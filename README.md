@@ -30,10 +30,11 @@ uvicorn interaction.resolver.main:app --host 127.0.0.1 --port 8020 --reload
 ```
 
 ### Структура
-- `management/` — планировщик задач, напоминания, триггеры wellbeing
+- `toolrunner/management/` — планировщик задач, напоминания, триггеры wellbeing
 - `core/controller/` — REST API, интеграция с резолвером и LLM
 - `core/` — сборка конвейера Resolver → Planner → Executor
-- `resolver/`, `planner/`, `executor/`, `stylist/` — новый слой распознавания интентов, планирования, исполнения и стилизации
+- `core/executor/`, `interaction/resolver/`, `toolrunner/management/planner/`, `interaction/stylist/` —
+  слой распознавания интентов, планирования, исполнения и стилизации
 - `toolrunner/` — файловые/системные инструменты
 - `interaction/resolver/` — правила, нормализация, слоты, LLM-поддержка
 - `tools_cli/` — PowerShell CLI (`tools_cli/jarvis.ps1`), HTTP-клиент
