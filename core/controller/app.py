@@ -3,17 +3,26 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from collections import deque
 import re
+import sys
 import yaml
 import httpx
 
-from config.loader import load_config as load_core_config
-from core.pipeline import Pipeline, PipelineResult, build_http_pipeline
-from resolver.resolver import ResolverConfig
+try:  # pragma: no cover - runtime import guard
+    from config.loader import load_config as load_core_config
+    from core.pipeline import Pipeline, PipelineResult, build_http_pipeline
+    from resolver.resolver import ResolverConfig
+except ModuleNotFoundError:  # pragma: no cover - script execution fallback
+    repo_root = Path(__file__).resolve().parent.parent
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
+    from config.loader import load_config as load_core_config  # type: ignore
+    from core.pipeline import Pipeline, PipelineResult, build_http_pipeline  # type: ignore
+    from resolver.resolver import ResolverConfig  # type: ignore
 
-from .contracts import ChatIn, ChatOut
-from .router import route, ALLOWED
-from .ollama_client import ollama_chat, ollama_chat_auto
-from .resolver_adapter import ResolverAdapter
+from controller.contracts import ChatIn, ChatOut
+from controller.router import route, ALLOWED
+from controller.ollama_client import ollama_chat, ollama_chat_auto
+from controller.resolver_adapter import ResolverAdapter
 
 CFG_PATH = Path(__file__).parent / "config.yaml"
 _config = yaml.safe_load(CFG_PATH.read_text(encoding="utf-8")) if CFG_PATH.exists() else {}
