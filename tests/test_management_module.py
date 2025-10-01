@@ -2,7 +2,14 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from management import AgentState, ManagementService, PriorityLevel, TaskStatus, TaskType, TrustLevel
+from toolrunner.management import (
+    AgentState,
+    ManagementService,
+    PriorityLevel,
+    TaskStatus,
+    TaskType,
+    TrustLevel,
+)
 
 
 @pytest.fixture()
