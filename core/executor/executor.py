@@ -5,7 +5,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple
 
-from planner.planner import Plan
+from toolrunner.management.planner.planner import Plan
 
 from .registry import get_tool_metadata
 from .transports import ToolTransport
