@@ -1,11 +1,11 @@
-from stylist import Stylist
+from interaction.stylist import Stylist
 from pathlib import Path
 
-from stylist import Stylist
+from interaction.stylist import Stylist
 
 
 def test_required_keys_exist():
-    stylist = Stylist(templates_path=Path("stylist/templates.yaml"))
+    stylist = Stylist(templates_path=Path("interaction/stylist/templates.yaml"))
     for key in [
         "planner.confirm.write",
         "planner.preview.files.create",
