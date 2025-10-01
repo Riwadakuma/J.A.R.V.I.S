@@ -5,11 +5,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Optional
 
-from executor.executor import Executor, ExecutionResult
-from executor.transports import HttpToolTransport, LocalToolTransport
-from planner.planner import Plan, Planner
-from resolver.intents import Intent
-from resolver.resolver import ResolverConfig, ResolverService
+from core.executor.executor import Executor, ExecutionResult
+from core.executor.transports import HttpToolTransport, LocalToolTransport
+from interaction.resolver.intents import Intent
+from interaction.resolver.resolver import ResolverConfig, ResolverService
+from toolrunner.management.planner.planner import Plan, Planner
 
 
 @dataclass(frozen=True)
