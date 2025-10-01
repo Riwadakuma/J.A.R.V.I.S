@@ -15,11 +15,11 @@ resolver:
   llm_base_url: "http://127.0.0.1:11434"
   llm_model: "tinyllama"
 planner:
-  rules_path: "planner/rules.yaml"
+  rules_path: "toolrunner/management/planner/rules.yaml"
 executor:
   toolrunner:
     base_url: "http://127.0.0.1:8011"
     timeout_sec: 30
     token: ""
 stylist:
-  templates: "stylist/templates.yaml"
+  templates: "interaction/stylist/templates.yaml"
