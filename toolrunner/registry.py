@@ -1,6 +1,6 @@
 from typing import Callable, Dict, Any
 
-from .tools.files import (
+from toolrunner.tools.files import (
     cmd_files_list,
     cmd_files_read,
     cmd_files_create,
@@ -9,7 +9,7 @@ from .tools.files import (
     cmd_files_reveal,
     cmd_files_shortcut,
 )
-from .tools.system import (
+from toolrunner.tools.system import (
     cmd_system_help,
     cmd_system_config_get,
     cmd_system_config_set,
