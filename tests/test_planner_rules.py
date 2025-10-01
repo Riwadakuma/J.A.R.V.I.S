@@ -1,10 +1,10 @@
 from pathlib import Path
 
-from planner.planner import Planner
-from resolver.intents import command_intent
+from toolrunner.management.planner.planner import Planner
+from interaction.resolver.intents import command_intent
 
 
-RULES_PATH = Path("planner/rules.yaml")
+RULES_PATH = Path("toolrunner/management/planner/rules.yaml")
 
 
 def test_planner_creates_single_step_plan():
