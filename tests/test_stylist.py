@@ -1,6 +1,6 @@
 import random
 
-from tools_cli.stylist import Stylist
+from interaction.stylist import Stylist
 
 
 def test_say_key_avoids_recent_repeats():
