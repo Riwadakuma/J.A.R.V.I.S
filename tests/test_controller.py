@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
-from controller.app import app
-import controller.app as capp
-import controller.resolver_adapter as cra
+from core.controller.app import app
+import core.controller.app as capp
+import core.controller.resolver_adapter as cra
 import toolrunner.app as tapp
 import interaction.resolver.main as resolver_main
 
