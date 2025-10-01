@@ -1,6 +1,6 @@
 from typing import Any, Dict
 
-from resolver.legacy_router import ALLOWED, legacy_route
+from interaction.resolver.legacy_router import ALLOWED, legacy_route
 
 
 def route(user_text: str) -> Dict[str, Any]:
