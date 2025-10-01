@@ -3,9 +3,17 @@ from pydantic import BaseModel
 from typing import Any, Dict, Optional
 import yaml
 from pathlib import Path
+import sys
 
-from .registry import REGISTRY, ALLOWED_COMMANDS
-from .security import normalize_args, ensure_allowed, shared_token_ok
+try:  # pragma: no cover - runtime import guard
+    from toolrunner.registry import REGISTRY, ALLOWED_COMMANDS
+    from toolrunner.security import normalize_args, ensure_allowed, shared_token_ok
+except ModuleNotFoundError:  # pragma: no cover - script execution fallback
+    repo_root = Path(__file__).resolve().parent.parent
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
+    from toolrunner.registry import REGISTRY, ALLOWED_COMMANDS  # type: ignore
+    from toolrunner.security import normalize_args, ensure_allowed, shared_token_ok  # type: ignore
 
 # ---- config ----
 CFG_PATH = Path(__file__).parent / "config.yaml"
