@@ -41,7 +41,7 @@ def normalize_args(args: dict) -> dict:
     return out
 
 def ensure_allowed(command: str):
-    from .registry import ALLOWED_COMMANDS
+    from toolrunner.registry import ALLOWED_COMMANDS
     if command not in ALLOWED_COMMANDS:
         raise ValueError("E_UNKNOWN_COMMAND")
 
