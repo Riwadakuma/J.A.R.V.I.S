@@ -12,17 +12,17 @@ try:  # pragma: no cover - runtime import guard
     from core.pipeline import Pipeline, PipelineResult, build_http_pipeline
     from resolver.resolver import ResolverConfig
 except ModuleNotFoundError:  # pragma: no cover - script execution fallback
-    repo_root = Path(__file__).resolve().parent.parent
+    repo_root = Path(__file__).resolve().parent[2]
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
     from config.loader import load_config as load_core_config  # type: ignore
     from core.pipeline import Pipeline, PipelineResult, build_http_pipeline  # type: ignore
     from resolver.resolver import ResolverConfig  # type: ignore
 
-from controller.contracts import ChatIn, ChatOut
-from controller.router import route, ALLOWED
-from controller.ollama_client import ollama_chat, ollama_chat_auto
-from controller.resolver_adapter import ResolverAdapter
+from core.controller.contracts import ChatIn, ChatOut
+from core.controller.router import route, ALLOWED
+from core.controller.ollama_client import ollama_chat, ollama_chat_auto
+from core.controller.resolver_adapter import ResolverAdapter
 
 CFG_PATH = Path(__file__).parent / "config.yaml"
 _config = yaml.safe_load(CFG_PATH.read_text(encoding="utf-8")) if CFG_PATH.exists() else {}
@@ -34,7 +34,7 @@ _planner_enabled = bool((_core_features.get("planner") or {}).get("enabled", Tru
 _strict_acl = bool(_core_features.get("strict_acl", True))
 _provenance_verbose = bool(((_core_features.get("provenance") or {}).get("verbose")) or False)
 
-_root_dir = Path(__file__).parent.parent
+_root_dir = Path(__file__).resolve().parents[2]
 
 _planner_rules_path = Path((_core_config.get("planner") or {}).get("rules_path", "planner/rules.yaml"))
 if not _planner_rules_path.is_absolute():
