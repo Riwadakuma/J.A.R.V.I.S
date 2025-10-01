@@ -13,14 +13,14 @@ python -m venv .venv
 pip install -r requirements.txt -r requirements-dev.txt
 
 # 3) скопировать конфиги
-Copy-Item .\controller\config.yaml .\controller\config.local.yaml -ErrorAction SilentlyContinue
+Copy-Item .\core\controller\config.yaml .\core\controller\config.local.yaml -ErrorAction SilentlyContinue
 Copy-Item .\toolrunner\config.yaml .\toolrunner\config.local.yaml -ErrorAction SilentlyContinue
 ```
 
 ### Запуск сервисов
 ```powershell
 # Controller (8010)
-uvicorn controller.app:app --host 127.0.0.1 --port 8010 --reload
+uvicorn core.controller.app:app --host 127.0.0.1 --port 8010 --reload
 
 # ToolRunner (8011)
 uvicorn toolrunner.app:app --host 127.0.0.1 --port 8011 --reload
@@ -31,7 +31,7 @@ uvicorn interaction.resolver.main:app --host 127.0.0.1 --port 8020 --reload
 
 ### Структура
 - `management/` — планировщик задач, напоминания, триггеры wellbeing
-- `controller/` — REST API, интеграция с резолвером и LLM
+- `core/controller/` — REST API, интеграция с резолвером и LLM
 - `core/` — сборка конвейера Resolver → Planner → Executor
 - `resolver/`, `planner/`, `executor/`, `stylist/` — новый слой распознавания интентов, планирования, исполнения и стилизации
 - `toolrunner/` — файловые/системные инструменты
@@ -40,7 +40,7 @@ uvicorn interaction.resolver.main:app --host 127.0.0.1 --port 8020 --reload
 - `workspace/`, `logs/` — локальные артефакты (пустые)
 
 ### Конфигурация
-`controller/config.yaml` и `toolrunner/config.yaml` используют относительные пути и localhost.
+`core/controller/config.yaml` и `toolrunner/config.yaml` используют относительные пути и localhost.
 Если нужны абсолютные пути, правь секцию `paths.workspace` или добавь `*.local.yaml` и читай при старте.
 
 CLI (`tools_cli/jarvis_cli.py`) по умолчанию использует `tools_cli/cli_config.yaml`.
