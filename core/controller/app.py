@@ -7,17 +7,13 @@ import sys
 import yaml
 import httpx
 
-try:  # pragma: no cover - runtime import guard
-    from config.loader import load_config as load_core_config
-    from core.pipeline import Pipeline, PipelineResult, build_http_pipeline
-    from resolver.resolver import ResolverConfig
-except ModuleNotFoundError:  # pragma: no cover - script execution fallback
-    repo_root = Path(__file__).resolve().parent[2]
-    if str(repo_root) not in sys.path:
-        sys.path.insert(0, str(repo_root))
-    from config.loader import load_config as load_core_config  # type: ignore
-    from core.pipeline import Pipeline, PipelineResult, build_http_pipeline  # type: ignore
-    from resolver.resolver import ResolverConfig  # type: ignore
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from config.loader import load_config as load_core_config
+from core.pipeline import Pipeline, PipelineResult, build_http_pipeline
+from resolver.resolver import ResolverConfig
 
 from core.controller.contracts import ChatIn, ChatOut
 from core.controller.router import route, ALLOWED
