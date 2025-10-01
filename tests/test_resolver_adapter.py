@@ -1,6 +1,6 @@
 from pathlib import Path
 
-import controller.resolver_adapter as cra
+import core.controller.resolver_adapter as cra
 import toolrunner.app as tapp
 import httpx
 
