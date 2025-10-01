@@ -8,7 +8,7 @@ from typing import Any, Dict, Mapping, Optional, Tuple
 
 import yaml
 
-from resolver.intents import Intent
+from interaction.resolver.intents import Intent
 
 from .policies import PlanPolicy, build_policy
 
