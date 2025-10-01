@@ -1,10 +1,10 @@
 from pathlib import Path
 
-from executor.executor import Executor
-from executor.transports import LocalToolTransport
-from planner.planner import Plan, PlanStep
-from planner.policies import PlanPolicy
-from resolver.intents import command_intent
+from core.executor.executor import Executor
+from core.executor.transports import LocalToolTransport
+from interaction.resolver.intents import command_intent
+from toolrunner.management.planner.planner import Plan, PlanStep
+from toolrunner.management.planner.policies import PlanPolicy
 
 
 def make_plan(intent_name: str, args: dict, rule_id: str, confirmation_level: int, acl: tuple[str, ...]):
