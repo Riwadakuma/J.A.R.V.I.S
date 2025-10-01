@@ -3,7 +3,7 @@ import os
 import subprocess
 from typing import Any, Dict, List
 
-from ..security import workspace_path, _cfg_workspace, max_read_bytes, feature_enabled
+from toolrunner.security import workspace_path, _cfg_workspace, max_read_bytes, feature_enabled
 
 # Внутренний триммер для масок/путей (на случай, если нормализация args не сработала раньше)
 def _clean_str(s: str) -> str:
