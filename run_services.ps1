@@ -10,7 +10,7 @@ set "VENV=%ROOT%venv\Scripts\Activate.ps1"
 
 REM Controller (8010)
 start "JARVIS Controller (8010)" "%PWSH%" -NoExit -Command ^
- "Set-Location '%ROOT%'; . '%VENV%'; python -m uvicorn controller.app:app --app-dir controller --host 127.0.0.1 --port 8010 --reload --log-level debug"
+ "Set-Location '%ROOT%'; . '%VENV%'; python -m uvicorn core.controller.app:app --app-dir . --host 127.0.0.1 --port 8010 --reload --log-level debug"
 
 REM ToolRunner (8011)
 start "JARVIS ToolRunner (8011)" "%PWSH%" -NoExit -Command ^
