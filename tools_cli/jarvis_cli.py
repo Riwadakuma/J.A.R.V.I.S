@@ -5,13 +5,11 @@ from pathlib import Path
 from typing import Dict, Any, Tuple, Optional
 import requests, yaml
 
-try:  # pragma: no cover - runtime import guard
-    from .stylist import get_stylist, say, say_key
-except ImportError:  # pragma: no cover - script execution fallback
-    repo_root = Path(__file__).resolve().parent.parent
-    if str(repo_root) not in sys.path:
-        sys.path.insert(0, str(repo_root))
-    from interaction.stylist import get_stylist, say, say_key  # type: ignore
+repo_root = Path(__file__).resolve().parent.parent
+if str(repo_root) not in sys.path:
+    sys.path.insert(0, str(repo_root))
+
+from interaction.stylist import get_stylist, say, say_key
 
 _stylist = get_stylist()
 _stylist.update_defaults(signature="командир", signature_short="сэр")

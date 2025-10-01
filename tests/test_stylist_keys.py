@@ -1,4 +1,3 @@
-from interaction.stylist import Stylist
 from pathlib import Path
 
 from interaction.stylist import Stylist
@@ -29,3 +28,4 @@ def test_anti_repeat_prevents_duplicate_phrases():
     first = stylist.say_key("status.ok")
     second = stylist.say_key("status.ok")
     assert first != second
+    
