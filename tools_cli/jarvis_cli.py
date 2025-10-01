@@ -11,7 +11,7 @@ except ImportError:  # pragma: no cover - script execution fallback
     repo_root = Path(__file__).resolve().parent.parent
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
-    from stylist import get_stylist, say, say_key  # type: ignore
+    from interaction.stylist import get_stylist, say, say_key  # type: ignore
 
 _stylist = get_stylist()
 _stylist.update_defaults(signature="командир", signature_short="сэр")
