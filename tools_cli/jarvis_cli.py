@@ -9,6 +9,7 @@ repo_root = Path(__file__).resolve().parent.parent
 if str(repo_root) not in sys.path:
     sys.path.insert(0, str(repo_root))
 
+from logs import format_cli_event
 from interaction.stylist import get_stylist, say, say_key
 
 _stylist = get_stylist()
@@ -101,18 +102,13 @@ def append_line(p: Path, line: str):
         logging.exception(f"Failed to append line to {p}")
 
 
-def now_ts() -> str:
-    """Return current timestamp as a string."""
-    return time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime())
-
-
 def log_event(cfg: Dict[str, Any], event: str, payload: Dict[str, Any]):
     """Append an event record to the log file configured in ``cfg``."""
     lf = (cfg.get("ui") or {}).get("log_file")
     if not lf:
         return
-    rec = {"ts": now_ts(), "event": event, **payload}
-    append_line(Path(lf), json.dumps(rec, ensure_ascii=False))
+    line = format_cli_event(event, payload)
+    append_line(Path(lf), line)
 
 
 def append_history(cfg: Dict[str, Any], text: str):
@@ -382,6 +378,12 @@ def run_once(
     Returns:
         Shell-style exit code.
     """
+    log_event(
+        cfg,
+        "cli_input",
+        {"text": text, "mode": mode, "no_exec": no_exec, "verbose": verbose},
+    )
+
     spinner = Spinner(bool((cfg.get("ui") or {}).get("spinner", True)))
     spinner.start(say_key("spinner.thinking"))
     status, chat, headers, dur_ms = do_chat(cfg, text)
