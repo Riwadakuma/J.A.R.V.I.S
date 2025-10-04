@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from collections import deque
 from urllib.parse import urlparse
-import logging
 import re
 import sys
 import yaml
@@ -25,8 +24,6 @@ from core.controller.resolver_adapter import ResolverAdapter
 CFG_PATH = Path(__file__).parent / "config.yaml"
 _config = yaml.safe_load(CFG_PATH.read_text(encoding="utf-8")) if CFG_PATH.exists() else {}
 _diagnostic_mode = bool(_config.get("diagnostic_mode", False))
-
-_logger = logging.getLogger(__name__)
 
 _core_config = load_core_config()
 _core_features = _core_config.get("features") or {}
@@ -167,8 +164,6 @@ def _find_port_conflicts(ports: Dict[str, Dict[str, Any]]) -> Dict[int, List[str
 
 _ports_snapshot = _gather_ports()
 _port_conflicts = _find_port_conflicts(_ports_snapshot)
-if _port_conflicts:
-    _logger.warning("Port conflicts detected: %s", _port_conflicts)
 
 
 def _build_resolver_config() -> ResolverConfig:
