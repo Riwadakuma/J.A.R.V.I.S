@@ -330,8 +330,14 @@ def print_pretty(resp: Dict[str, Any]) -> int:
             return 0
         if ok:
             res = resp.get("result")
-            if isinstance(res, (dict, list)):
+            if isinstance(res, dict):
                 print(json.dumps(res, ensure_ascii=False, indent=2))
+            elif isinstance(res, list):
+                if all(isinstance(item, str) for item in res):
+                    for item in res:
+                        print(item)
+                else:
+                    print(json.dumps(res, ensure_ascii=False, indent=2))
             elif res is None:
                 print(say_key("status.ok"))
             else:
