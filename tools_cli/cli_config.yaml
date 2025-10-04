@@ -12,7 +12,7 @@ toolrunner:
 ui:
   mode: "pretty"         # pretty | json | raw
   history_file: "../data/cli_history.txt"
-  log_file: "../logs/cli.log"        # подробный лог в JSONL
+  log_file: "../logs/cli.log"        # текстовый лог с краткими событиями
   spinner: true                       # псевдо-индикатор ожидания
   confirm_on_low_conf: false          # если контроллер вернет мета с низкой уверенностью
   auto_exec: true                     # выполнять команду автоматически (если controller.proxy_commands=false)
