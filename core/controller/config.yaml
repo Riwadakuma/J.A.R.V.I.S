@@ -21,7 +21,7 @@ controller:
   enforce_allowlist: true
 
 toolrunner:
-  base_url: "http://127.0.0.1:8030"
+  base_url: "http://127.0.0.1:8011"
   timeout_sec: 10
 
 interaction:
