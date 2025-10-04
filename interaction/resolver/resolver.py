@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, Mapping, MutableMapping, Optional, Sequence
+from typing import Any, Dict, Iterable, Mapping, MutableMapping, Optional, Sequence, Tuple
 
 import httpx
 
@@ -48,6 +48,29 @@ class ResolverService:
         self._http_client_cls = http_client_cls
         self._whitelist = set(config.whitelist or LEGACY_ALLOWED)
 
+    _COMMAND_HINTS: Dict[str, Tuple[str, ...]] = {
+        "files.list": ("покаж", "показ", "список", "файл", "файлы", "list", "ls", "каталог", "директ"),
+        "files.read": ("прочита", "прочти", "read", "откр", "open", "show"),
+        "files.create": ("созда", "create", "новый файл", "new file"),
+        "files.append": ("допи", "добав", "append", "add"),
+        "files.open": ("откр", "open", "просмот"),
+        "files.reveal": ("ярлык", "reveal", "show"),
+        "files.shortcut_to_desktop": ("ярлык", "shortcut", "ярлык"),
+        "system.help": ("help", "помощ"),
+        "system.config_get": ("конфиг", "config"),
+        "system.config_set": ("конфиг", "config", "set"),
+    }
+
+    @classmethod
+    def _text_has_command_signal(cls, text: str, command: str) -> bool:
+        lowered = text.lower().strip()
+        if not lowered:
+            return False
+        hints = cls._COMMAND_HINTS.get(command)
+        if hints is None:
+            return True
+        return any(hint in lowered for hint in hints if hint)
+
     def resolve(self, text: str, *, context: Optional[Mapping[str, Any]] = None) -> Intent:
         trace_id = str(uuid.uuid4())
         context = context or {}
@@ -68,6 +91,31 @@ class ResolverService:
         if self._cfg.remote_url and self._cfg.mode in {"hybrid", "remote"}:
             remote_intent = self._resolve_remote(text, context=context, trace_id=trace_id)
             if remote_intent and remote_intent.is_command():
+                if not self._text_has_command_signal(text, remote_intent.name or ""):
+                    legacy_fallback = legacy_route(text)
+                    if legacy_fallback.is_command() and (legacy_fallback.name in self._whitelist):
+                        return command_intent(
+                            legacy_fallback.name or "",
+                            args=legacy_fallback.args,
+                            confidence=remote_intent.meta.confidence,
+                            rule=legacy_fallback.meta.rule,
+                            trace_id=trace_id,
+                            source=legacy_fallback.meta.source or "legacy",
+                            fallback_used=True,
+                            explain=legacy_fallback.meta.explain,
+                        )
+                    explain = list(remote_intent.meta.explain)
+                    explain.append(f"ignored_remote_command:{remote_intent.name}")
+                    if remote_intent.meta.source:
+                        explain.append(f"source:{remote_intent.meta.source}")
+                    if remote_intent.meta.confidence is not None:
+                        explain.append(f"confidence:{remote_intent.meta.confidence:.2f}")
+                    return chat_intent(
+                        text,
+                        trace_id=trace_id,
+                        rule="remote_suspect_command",
+                        explain=tuple(explain),
+                    )
                 if remote_intent.meta.confidence is None:
                     return remote_intent
                 if (
