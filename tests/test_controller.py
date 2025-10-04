@@ -204,33 +204,24 @@ def test_pipeline_executes_with_local_transport(monkeypatch, tmp_path):
     assert meta.get("executor", {}).get("ok") is True
 
 
-def test_pipeline_executes_with_local_transport(monkeypatch, tmp_path):
-    from core.pipeline import build_local_pipeline
-    from interaction.resolver.resolver import ResolverConfig
-
-    resolver_cfg = ResolverConfig(
-        whitelist=list(capp._WHITELIST_RESOLVER),
-        remote_url=None,
-        mode="quick",
-    )
-    pipeline = build_local_pipeline(
-        resolver_config=resolver_cfg,
-        planner_rules_path=capp._planner_rules_path,
-        toolrunner_config={"paths": {"workspace": str(tmp_path)}},
-        strict_acl=True,
-    )
-    monkeypatch.setattr(capp, "_pipeline", pipeline)
-    monkeypatch.setattr(capp, "_planner_enabled", True)
-    monkeypatch.setattr(capp, "_workspace_root", str(tmp_path))
-
+def test_diagnostics_reports_ports(monkeypatch):
+    monkeypatch.setattr(capp, "_diagnostic_mode", True)
     client = TestClient(app)
-    r = client.post("/chat", json={"text": "создай файл alpha.txt с содержимым тест"})
-    assert r.status_code == 200
-    data = r.json()
-    assert data["type"] == "command"
-    assert data["ok"] is True
-    assert data["command"] == "files.create"
-    assert (tmp_path / "alpha.txt").read_text(encoding="utf-8") == "тест"
-    meta = data.get("meta") or {}
-    assert meta.get("planner", {}).get("planner_rule_id") == "fs_create"
-    assert meta.get("executor", {}).get("ok") is True
+    resp = client.get("/diagnostics")
+    assert resp.status_code == 200
+    data = resp.json()
+    ports = data["ports"]
+    assert {"controller", "toolrunner", "resolver", "conflicts"} <= set(ports)
+    assert ports["controller"]["port"] == capp._controller_port
+    assert ports["conflicts"] == {}
+
+
+def test_diagnostics_detects_port_conflict(monkeypatch):
+    monkeypatch.setattr(capp, "_diagnostic_mode", True)
+    monkeypatch.setattr(capp, "_tr_base", "http://127.0.0.1:8010")
+    client = TestClient(app)
+    resp = client.get("/diagnostics")
+    assert resp.status_code == 200
+    conflicts = resp.json()["ports"]["conflicts"]
+    assert "8010" in conflicts
+    assert set(conflicts["8010"]) == {"controller", "toolrunner"}
