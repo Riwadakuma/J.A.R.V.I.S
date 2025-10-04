@@ -112,3 +112,12 @@ def test_do_diagnostics(monkeypatch):
     code = jarvis_cli.do_diagnostics(cfg, "json")
     assert code == 0
     assert captured["resp"] == {"ok": True}
+
+def test_print_pretty_lists_strings(capsys):
+    resp = {"type": "command", "command": "files.list", "result": ["a.txt", "b.txt"], "ok": True}
+
+    exit_code = jarvis_cli.print_pretty(resp)
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert captured.out.strip().splitlines() == ["a.txt", "b.txt"]
