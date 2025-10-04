@@ -29,6 +29,8 @@ htmlcov/
 # Local data
 workspace/
 logs/
+!logs/
+!logs/**/*.py
 data/
 tmp/
 artifacts/
