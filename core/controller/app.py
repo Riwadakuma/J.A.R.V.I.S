@@ -2,6 +2,8 @@ from fastapi import FastAPI, HTTPException
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from collections import deque
+from urllib.parse import urlparse
+import logging
 import re
 import sys
 import yaml
@@ -24,8 +26,11 @@ CFG_PATH = Path(__file__).parent / "config.yaml"
 _config = yaml.safe_load(CFG_PATH.read_text(encoding="utf-8")) if CFG_PATH.exists() else {}
 _diagnostic_mode = bool(_config.get("diagnostic_mode", False))
 
+_logger = logging.getLogger(__name__)
+
 _core_config = load_core_config()
 _core_features = _core_config.get("features") or {}
+_core_resolver_cfg = _core_config.get("resolver") or {}
 _planner_enabled = bool((_core_features.get("planner") or {}).get("enabled", True))
 _strict_acl = bool(_core_features.get("strict_acl", True))
 _provenance_verbose = bool(((_core_features.get("provenance") or {}).get("verbose")) or False)
@@ -47,8 +52,25 @@ SYSTEM_PROMPT = (
     "Не придумывай факты. Если не уверен — 'Не знаю'."
 )
 
+_server_cfg = _config.get("server") or {}
+_controller_host = str(_server_cfg.get("host", "127.0.0.1"))
+_controller_port = int(_server_cfg.get("port", 8010))
+
 _interaction = _config.get("interaction") or {}
 _resolver_enabled = bool(_interaction.get("enabled", True))
+
+
+def _resolve_resolver_url() -> Optional[str]:
+    if "remote_url" in _core_resolver_cfg:
+        value = _core_resolver_cfg.get("remote_url")
+    else:
+        value = _interaction.get("resolver_url", "http://127.0.0.1:8020")
+    if not value:
+        return None
+    return str(value)
+
+
+_resolver_base_url = _resolve_resolver_url()
 
 _RESOLVER_TO_TOOL: Dict[str, str] = {
     "files.list": "files.list",
@@ -69,9 +91,9 @@ _workspace_root = _config.get(
 )
 
 _resolver = None
-if _resolver_enabled:
+if _resolver_enabled and _resolver_base_url:
     _resolver = ResolverAdapter(
-        base_url=_interaction.get("resolver_url", "http://127.0.0.1:8020"),
+        base_url=_resolver_base_url,
         whitelist=_WHITELIST_RESOLVER,
         workspace_root=_workspace_root,
         mode=_interaction.get("resolver_mode", "hybrid"),
@@ -110,12 +132,51 @@ _tr_token = (
 _history = deque(maxlen=12)  # [ {"role": "...", "content": "..."} ]
 
 
+def _port_from_url(url: str | None, default: int | None = None) -> Optional[int]:
+    if not url:
+        return default
+    try:
+        parsed = urlparse(url if "://" in url else f"http://{url}")
+    except ValueError:
+        return default
+    if parsed.port:
+        return parsed.port
+    if parsed.scheme == "http":
+        return default if default is not None else 80
+    if parsed.scheme == "https":
+        return default if default is not None else 443
+    return default
+
+
+def _gather_ports() -> Dict[str, Dict[str, Any]]:
+    return {
+        "controller": {"host": _controller_host, "port": _controller_port},
+        "toolrunner": {"base_url": _tr_base or None, "port": _port_from_url(_tr_base)},
+        "resolver": {"base_url": _resolver_base_url or None, "port": _port_from_url(_resolver_base_url)},
+    }
+
+
+def _find_port_conflicts(ports: Dict[str, Dict[str, Any]]) -> Dict[int, List[str]]:
+    seen: Dict[int, List[str]] = {}
+    for name, info in ports.items():
+        port = info.get("port")
+        if isinstance(port, int):
+            seen.setdefault(port, []).append(name)
+    return {port: sorted(names) for port, names in seen.items() if len(names) > 1}
+
+
+_ports_snapshot = _gather_ports()
+_port_conflicts = _find_port_conflicts(_ports_snapshot)
+if _port_conflicts:
+    _logger.warning("Port conflicts detected: %s", _port_conflicts)
+
+
 def _build_resolver_config() -> ResolverConfig:
     cfg = _core_config.get("resolver") or {}
     llm_cfg = cfg.get("llm") or (_interaction.get("llm") or {})
     return ResolverConfig(
         whitelist=_WHITELIST_RESOLVER,
-        remote_url=cfg.get("remote_url") or _interaction.get("resolver_url", "http://127.0.0.1:8020"),
+        remote_url=_resolver_base_url,
         timeout=float(cfg.get("timeout", _interaction.get("timeout_sec", 2.5))),
         mode=str(cfg.get("mode", _interaction.get("resolver_mode", "hybrid"))),
         low_conf_threshold=float(cfg.get("low_conf_threshold", _low_conf_threshold)),
@@ -220,6 +281,8 @@ def healthz():
 def diagnostics():
     if not _diagnostic_mode:
         raise HTTPException(status_code=404, detail="Diagnostics disabled")
+    ports = _gather_ports()
+    conflicts = _find_port_conflicts(ports)
     return {
         "diagnostic_mode": True,
         "config": _config,
@@ -238,6 +301,7 @@ def diagnostics():
             "error": _pipeline_error,
         },
         "model": _config.get("model") or {},
+        "ports": {**ports, "conflicts": conflicts},
     }
 
 
