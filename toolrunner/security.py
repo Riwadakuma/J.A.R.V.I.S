@@ -1,5 +1,19 @@
 from pathlib import Path
 
+
+def sanitize_workspace_path(rel: str, config: dict) -> Path:
+    """Validate a workspace-relative path for unsafe characters and traversal."""
+
+    if not isinstance(rel, str):
+        raise ValueError("E_INVALID_PATH")
+    if "\x00" in rel or any(ch in rel for ch in ("\n", "\r")):
+        raise ValueError("E_INVALID_PATH")
+    cleaned = rel.strip()
+    if not cleaned:
+        raise ValueError("E_ARG_MISSING:path")
+    return workspace_path(cleaned, config)
+
+
 def _cfg_workspace(config: dict) -> Path:
     """
     Возвращает абсолютный путь к корню workspace согласно конфигу.
