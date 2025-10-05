@@ -154,26 +154,28 @@ class ManagementService:
                 required_level=required,
             )
 
-        updates = []
+        updates: list[tuple[str, str | None]] = []
         payload: dict[str, str] = {}
+        allowed_columns = {
+            "start_time": "start_time",
+            "end_time": "end_time",
+        }
         if new_start is not None:
             start_dt = _to_datetime(new_start)
-            updates.append(("start_time", start_dt.isoformat() if start_dt else None))
+            updates.append((allowed_columns["start_time"], start_dt.isoformat() if start_dt else None))
             payload["new_start"] = start_dt.isoformat() if start_dt else None
         if new_end is not None:
             end_dt = _to_datetime(new_end)
-            updates.append(("end_time", end_dt.isoformat() if end_dt else None))
+            updates.append((allowed_columns["end_time"], end_dt.isoformat() if end_dt else None))
             payload["new_end"] = end_dt.isoformat() if end_dt else None
 
         if updates:
-            set_clause = ", ".join(f"{column} = ?" for column, _ in updates)
             values = [value for _, value in updates]
             values.append(_now().isoformat())
             values.append(task_id)
-            self.db.update(
-                f"UPDATE tasks SET {set_clause}, updated_at = ? WHERE id = ?",
-                values,
-            )
+            set_clause = ", ".join(f"{column} = ?" for column, _ in updates)
+            query = "UPDATE tasks SET " + set_clause + ", updated_at = ? WHERE id = ?"
+            self.db.update(query, values)
             task = self.get_task(task_id)
             self._schedule_task_reminders(task)
             self._log("task_shifted", task_id=task_id, payload=payload)
