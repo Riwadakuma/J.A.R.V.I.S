@@ -28,6 +28,10 @@ def test_file_commands_and_sandbox(monkeypatch, tmp_path):
     assert r.status_code == 400
     assert r.json()["detail"] == "E_PATH_OUTSIDE_WORKSPACE"
 
+    r = client.post("/execute", json={"command": "files.read", "args": {"path": "bad\nname.txt"}})
+    assert r.status_code == 400
+    assert r.json()["detail"] == "E_INVALID_PATH"
+
 
 def test_files_open_reveal_not_found(monkeypatch, tmp_path):
     monkeypatch.setattr(tr_app, "_config", {"paths": {"workspace": str(tmp_path)}})
