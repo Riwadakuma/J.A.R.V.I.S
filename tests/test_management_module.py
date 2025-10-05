@@ -75,6 +75,12 @@ def test_shift_task_requires_confirmation_for_p3(service: ManagementService) -> 
     assert re_eval_logs and re_eval_logs[-1]["priority"] == PriorityLevel.P3.value
 
 
+def test_shift_task_rejects_injection_payload(service: ManagementService) -> None:
+    task = service.create_task("Guard rails", priority=PriorityLevel.P2)
+    with pytest.raises(ValueError):
+        service.shift_task(task.id, new_start="2024-01-01T00:00:00+00:00; DROP TABLE tasks;--")
+
+
 def test_cancel_task_requires_double_confirm_for_p4(service: ManagementService) -> None:
     task = service.create_task("Ship hotfix", priority=PriorityLevel.P4)
     first = service.cancel_task(task.id, confirmation_level=1)
