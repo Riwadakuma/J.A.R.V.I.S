@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-from toolrunner.app import app
+from toolrunner.app import ExecIn, app
 import toolrunner.app as tr_app
 
 
@@ -44,3 +44,11 @@ def test_files_open_reveal_not_found(monkeypatch, tmp_path):
     r = client.post("/execute", json={"command": "files.reveal", "args": {"path": "missing.txt"}})
     assert r.status_code == 400
     assert r.json()["detail"] == "E_NOT_FOUND"
+
+
+def test_execin_args_isolated_defaults():
+    payload = ExecIn(command="noop")
+    payload.args["foo"] = "bar"
+
+    other = ExecIn(command="noop")
+    assert other.args == {}
