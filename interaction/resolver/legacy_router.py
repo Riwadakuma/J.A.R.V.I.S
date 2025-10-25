@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import shlex
 from typing import Any, Dict
 
 from .intents import Intent, command_intent, chat_intent
@@ -17,6 +18,7 @@ ALLOWED = {
     "system.help",
     "system.config_get",
     "system.config_set",
+    "management.execute",
 }
 
 _PATTERNS = [
@@ -39,6 +41,10 @@ _PATTERNS = [
         r'^\s*конфиг\s+установить\s+(\S+)\s+(.+)\s*$',
         lambda m: ("system.config_set", {"key": m.group(1), "value": m.group(2)}),
     ),
+    (
+        r'^\s*(?:менеджмент|управление)\s+(\w+)(?:\s+(.*))?\s*$',
+        lambda m: ("management.execute", {"action": m.group(1), "_extra": m.group(2) or ""}),
+    ),
 ]
 
 
@@ -52,6 +58,22 @@ def _normalize_args(args: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
+def _parse_management_args(raw: str) -> Dict[str, Any]:
+    if not raw:
+        return {}
+    tokens = shlex.split(raw)
+    args: Dict[str, Any] = {}
+    for token in tokens:
+        if "=" not in token:
+            raise ValueError("E_INVALID_MANAGEMENT_ARGS")
+        key, value = token.split("=", 1)
+        key = key.strip()
+        if not key:
+            raise ValueError("E_INVALID_MANAGEMENT_ARGS")
+        args[key] = value.strip()
+    return args
+
+
 def legacy_route(text: str) -> Intent:
     stripped = text.strip()
     for pattern, builder in _PATTERNS:
@@ -60,9 +82,19 @@ def legacy_route(text: str) -> Intent:
             continue
         command, args = builder(match)
         if command in ALLOWED:
+            payload = dict(args)
+            if command == "management.execute":
+                action = payload.get("action", "").strip()
+                if not action:
+                    continue
+                try:
+                    extras = _parse_management_args(payload.get("_extra", ""))
+                except ValueError:
+                    continue
+                payload = {"action": action, **extras}
             return command_intent(
                 command,
-                args=_normalize_args(args),
+                args=_normalize_args(payload),
                 rule="legacy_router",
                 source="legacy",
             )
