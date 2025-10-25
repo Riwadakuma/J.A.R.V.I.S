@@ -103,3 +103,14 @@ commands:
       - id: run
         tool: system.config_set
         use_intent_args: true
+  management.execute:
+    rule_id: mgmt_execute
+    acl: [management]
+    confirmation_level: 1
+    stylist:
+      preview: planner.preview.management.execute
+      confirmation: planner.confirm.management
+    steps:
+      - id: dispatch
+        tool: management.execute
+        use_intent_args: true
