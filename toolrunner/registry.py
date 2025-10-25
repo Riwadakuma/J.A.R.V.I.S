@@ -14,6 +14,7 @@ from toolrunner.tools.system import (
     cmd_system_config_get,
     cmd_system_config_set,
 )
+from toolrunner.tools.management import cmd_management_execute
 
 # Белый список команд (контролируется тут же)
 ALLOWED_COMMANDS = {
@@ -27,6 +28,7 @@ ALLOWED_COMMANDS = {
     "system.help",
     "system.config_get",
     "system.config_set",
+    "management.execute",
 }
 
 # Реестр: имя команды -> функция (args, config) -> Any
@@ -41,4 +43,5 @@ REGISTRY: Dict[str, Callable[[Dict[str, Any], Dict[str, Any]], Any]] = {
     "system.help": cmd_system_help,
     "system.config_get": cmd_system_config_get,
     "system.config_set": cmd_system_config_set,
+    "management.execute": cmd_management_execute,
 }
