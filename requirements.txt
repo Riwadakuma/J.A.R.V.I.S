@@ -1,4 +1,4 @@
--r controller/requirements.txt
+-r core/controller/requirements.txt
 -r toolrunner/requirements.txt
 -r tools_cli/requirements.txt
 -r interaction/resolver/rules/requirements.txt
