@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Any, Dict, Optional
 import yaml
 from pathlib import Path
@@ -21,7 +21,7 @@ _config = yaml.safe_load(CFG_PATH.read_text(encoding="utf-8")) if CFG_PATH.exist
 
 class ExecIn(BaseModel):
     command: str
-    args: Dict[str, Any] = {}
+    args: Dict[str, Any] = Field(default_factory=dict)
 
 class ExecOut(BaseModel):
     ok: bool
