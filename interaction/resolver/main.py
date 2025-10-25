@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pathlib import Path
 from typing import Dict, Any
 from .pipeline import Resolver
@@ -14,9 +14,9 @@ _rules = Resolver(
 class ResolveIn(BaseModel):
     trace_id: str
     text: str
-    context: Dict[str, Any] = {}
-    constraints: Dict[str, Any] = {}
-    config: Dict[str, Any] = {}
+    context: Dict[str, Any] = Field(default_factory=dict)
+    constraints: Dict[str, Any] = Field(default_factory=dict)
+    config: Dict[str, Any] = Field(default_factory=dict)
 
 @app.get("/health")
 def health():
