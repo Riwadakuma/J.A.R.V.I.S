@@ -20,8 +20,8 @@ DEFAULT_CFG = {
     "toolrunner": {"base_url": "http://127.0.0.1:8011", "timeout_sec": 30, "shared_token": ""},
     "ui": {
         "mode": "pretty",                     # pretty | json | raw
-        "history_file": "../data/cli_history.txt",
-        "log_file": "../logs/cli.log",
+        "history_file": str(repo_root / "data" / "cli_history.txt"),
+        "log_file": str(repo_root / "logs" / "cli.log"),
         "spinner": True,
         "confirm_on_low_conf": False,
         "auto_exec": True,
@@ -102,21 +102,37 @@ def append_line(p: Path, line: str):
         logging.exception(f"Failed to append line to {p}")
 
 
+def _resolve_ui_path(cfg: Dict[str, Any], key: str) -> Optional[Path]:
+    """Return an absolute ``Path`` for a UI setting, if provided."""
+    ui = cfg.get("ui") or {}
+    raw = ui.get(key)
+    if not raw:
+        return None
+    try:
+        candidate = Path(raw).expanduser()
+        if not candidate.is_absolute():
+            candidate = Path(__file__).resolve().parent / candidate
+        return candidate.resolve()
+    except Exception:
+        logging.exception(f"Failed to resolve path for UI setting '{key}': {raw}")
+        return None
+
+
 def log_event(cfg: Dict[str, Any], event: str, payload: Dict[str, Any]):
     """Append an event record to the log file configured in ``cfg``."""
-    lf = (cfg.get("ui") or {}).get("log_file")
+    lf = _resolve_ui_path(cfg, "log_file")
     if not lf:
         return
     line = format_cli_event(event, payload)
-    append_line(Path(lf), line)
+    append_line(lf, line)
 
 
 def append_history(cfg: Dict[str, Any], text: str):
     """Save user input to the history file if configured."""
-    hist = (cfg.get("ui") or {}).get("history_file")
+    hist = _resolve_ui_path(cfg, "history_file")
     if not hist:
         return
-    append_line(Path(hist), text.replace("\n", " "))
+    append_line(hist, text.replace("\n", " "))
 
 # ---------- http helpers ----------
 
