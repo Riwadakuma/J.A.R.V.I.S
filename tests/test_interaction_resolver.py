@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-from interaction.resolver.main import app
+from interaction.resolver.main import ResolveIn, app
 
 
 def test_resolve_simple(monkeypatch, tmp_path):
@@ -90,3 +90,15 @@ def test_resolve_unknown_phrase_returns_no_command(tmp_path):
     assert data["args"] == {}
     assert data["fallback_used"] is True
     assert "fallback:rule_miss" in data["explain"]
+
+
+def test_resolvein_defaults_are_not_shared():
+    payload = ResolveIn(trace_id="1", text="hi")
+    payload.context["foo"] = "bar"
+    payload.constraints["wl"] = ["files.list"]
+
+    other = ResolveIn(trace_id="2", text="hello")
+
+    assert other.context == {}
+    assert other.constraints == {}
+    assert other.config == {}
