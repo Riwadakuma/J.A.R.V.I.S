@@ -5,6 +5,7 @@ from collections import deque
 from urllib.parse import urlparse
 import re
 import sys
+import shlex
 import yaml
 import httpx
 
@@ -80,6 +81,7 @@ _RESOLVER_TO_TOOL: Dict[str, str] = {
     "system.help": "system.help",
     "system.config_get": "system.config_get",
     "system.config_set": "system.config_set",
+    "management.execute": "management.execute",
 }
 _WHITELIST_RESOLVER = list(_RESOLVER_TO_TOOL.keys())
 _workspace_root = _config.get(
@@ -239,7 +241,24 @@ _RU_PATTERNS: List[tuple[re.Pattern, str]] = [
     (re.compile(r"^(?:покажи|список|файлы)(?:\s+(.*))?$", re.I),    "files.list"),
     (re.compile(r"^(?:открой|открыть)\s+файл\s+(.+)$", re.I),       "files.open"),
     (re.compile(r"^(?:допиши|добавь)\s+в\s+файл\s+(.+?)\s*[:\-–]\s*(.+)$", re.I), "files.append"),
+    (re.compile(r"^(?:менеджмент|управление)\s+(\w+)(?:\s+(.*))?$", re.I), "management.execute"),
 ]
+
+
+def _parse_management_args(raw: str | None) -> Dict[str, Any]:
+    if not raw:
+        return {}
+    tokens = shlex.split(raw)
+    args: Dict[str, Any] = {}
+    for token in tokens:
+        if "=" not in token:
+            raise ValueError("E_INVALID_MANAGEMENT_ARGS")
+        key, value = token.split("=", 1)
+        key = key.strip()
+        if not key:
+            raise ValueError("E_INVALID_MANAGEMENT_ARGS")
+        args[key] = _clean_arg(value)
+    return args
 
 def _ru_quick_intent(text: str) -> Optional[Dict[str, Any]]:
     t = text.strip()
@@ -260,6 +279,16 @@ def _ru_quick_intent(text: str) -> Optional[Dict[str, Any]]:
         if cmd == "files.append" and m.lastindex and m.lastindex >= 2:
             g2 = _clean_arg(m.group(2))
             return {"type": "command", "command": cmd, "args": {"path": g1, "content": g2}}
+        if cmd == "management.execute":
+            action = _clean_arg(m.group(1)) if m.lastindex else ""
+            if not action:
+                continue
+            try:
+                extras = _parse_management_args(m.group(2) if m.lastindex and m.lastindex >= 2 else "")
+            except ValueError:
+                continue
+            payload = {"action": action, **extras}
+            return {"type": "command", "command": cmd, "args": payload}
     return None
 
 
